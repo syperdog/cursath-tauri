@@ -6,6 +6,7 @@
   background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   padding: 20px;
+  color: #333; /* Установим темный цвет текста для лучшей видимости */
 }
 
 .login-form-wrapper {
@@ -17,6 +18,7 @@
   max-width: 500px;
   position: relative;
   overflow: hidden;
+  color: #333; /* Убедимся, что текст внутри формы хорошо читаем */
 }
 
 .app-title {
@@ -162,23 +164,27 @@
   font-weight: bold;
   cursor: pointer;
   background: white;
+  color: #333; /* Установим темный цвет текста для кнопок PIN */
   transition: background 0.2s, transform 0.1s;
 }
 
 .keypad-row button:hover {
   background: #f5f5f5;
+  color: #333; /* Убедимся, что цвет текста остается темным при наведении */
 }
 
 .keypad-row button:active {
   transform: scale(0.95);
+  color: #333; /* Убедимся, что цвет текста остается темным при нажатии */
 }
 
 .keypad-row .submit-btn {
   background: linear-gradient(to bottom, #2ecc71, #27ae60);
-  color: white;
+  color: white; /* Для этой кнопки цвет текста белый, так как фон зеленый */
   font-size: 28px;
 }
 
 .keypad-row .submit-btn:hover {
   background: linear-gradient(to bottom, #27ae60, #219653);
+  color: white; /* Убедимся, что цвет текста остается белым при наведении */
 }

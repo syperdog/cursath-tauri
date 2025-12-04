@@ -1,5 +1,17 @@
 import React, { useState } from 'react';
+import { invoke } from '@tauri-apps/api/core';
 import './LoginForm.css';
+
+// Define User interface (should match the Rust struct)
+interface User {
+  id: number;
+  full_name: string;
+  role: string;
+  login: string | null;
+  password_hash: string | null;
+  pin_code: string | null;
+  status: string;
+}
 
 interface LoginFormData {
   username: string;
@@ -42,18 +54,26 @@ const LoginForm: React.FC = () => {
     setMessage('');
 
     try {
+      let result: [User, string];
       if (isPinMode) {
-        // Здесь будет вызов Tauri команды для проверки PIN-кода
-        const response = await window.__TAURI__.invoke('login_worker', { pin: pinData.pin });
-        setMessage(response as string);
+        result = await invoke<[User, string]>('login_worker', { pin: pinData.pin });
       } else {
-        // Здесь будет вызов Tauri команды для обычного входа
-        const response = await window.__TAURI__.invoke('login_user', { 
-          username: loginData.username, 
-          password: loginData.password 
+        result = await invoke<[User, string]>('login_user', {
+          username: loginData.username,
+          password: loginData.password
         });
-        setMessage(response as string);
       }
+
+      const [user, sessionToken] = result;
+
+      // Store user data and session token in localStorage
+      localStorage.setItem('userRole', user.role);
+      localStorage.setItem('userId', user.id.toString());
+      localStorage.setItem('userName', user.full_name);
+      localStorage.setItem('sessionToken', sessionToken);
+
+      // Redirect based on role
+      window.location.hash = `#${user.role.toLowerCase()}`;
     } catch (error) {
       setMessage(`Ошибка: ${(error as Error).message}`);
     }

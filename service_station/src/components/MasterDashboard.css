@@ -1,0 +1,398 @@
+.master-dashboard {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+  min-height: 100vh;
+  padding: 20px;
+  box-sizing: border-box;
+  color: #333; /* Установим темный цвет текста для лучшей видимости на светлом фоне */
+}
+
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: white;
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.dashboard-header h1 {
+  color: #2c3e50;
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.logout-btn {
+  background: #e74c3c;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 20px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background 0.3s;
+}
+
+.logout-btn:hover {
+  background: #c0392b;
+}
+
+.search-bar {
+  background: white;
+  border-radius: 16px;
+  padding: 15px;
+  margin-bottom: 20px;
+  display: flex;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.search-bar input {
+  flex: 1;
+  padding: 12px 15px;
+  border: 2px solid #e0e0e0;
+  border-radius: 10px;
+  font-size: 16px;
+}
+
+.search-bar input:focus {
+  border-color: #3498db;
+  outline: none;
+}
+
+.search-btn {
+  margin-left: 10px;
+  padding: 12px 20px;
+  background: #3498db;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.search-btn:hover {
+  background: #2980b9;
+}
+
+.dashboard-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.calendar-section {
+  background: white;
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  color: #333; /* Установим темный цвет текста для контента в этом разделе */
+}
+
+.calendar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.calendar-header h2 {
+  margin: 0;
+  color: #2c3e50;
+}
+
+.calendar-header button {
+  background: #ecf0f1;
+  border: none;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  cursor: pointer;
+  font-weight: bold;
+  margin-right: 5px;
+}
+
+.calendar-header button:hover {
+  background: #d5dbdb;
+}
+
+.archive-btn {
+  background: #f39c12;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 15px;
+  cursor: pointer;
+  margin-right: 5px;
+}
+
+.archive-btn:hover {
+  background: #d35400;
+}
+
+.new-order-btn {
+  background: #2ecc71;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 15px;
+  cursor: pointer;
+}
+
+.new-order-btn:hover {
+  background: #27ae60;
+}
+
+.calendar-grid {
+  display: flex;
+  flex-direction: column;
+}
+
+.weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  text-align: center;
+  font-weight: bold;
+  color: #7f8c8d;
+  margin-bottom: 5px;
+}
+
+.days-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.day {
+  height: 40px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.day:hover {
+  background: #f8f9fa;
+}
+
+.day.selected {
+  background: #3498db;
+  color: white;
+}
+
+.day.has-orders {
+  background: #e3f2fd;
+}
+
+.orders-section {
+  background: white;
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  color: #333; /* Установим темный цвет текста для контента в этом разделе */
+}
+
+.orders-section h3 {
+  margin-top: 0;
+  color: #2c3e50;
+}
+
+.orders-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.orders-table th,
+.orders-table td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid #eee;
+}
+
+.orders-table th {
+  background-color: #f8f9fa;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.status-badge {
+  padding: 5px 10px;
+  border-radius: 20px;
+  background-color: #e3f2fd;
+  color: #0d47a1;
+  font-weight: 500;
+}
+
+/* Archive section styles */
+.archive-section {
+  background: white;
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  margin-top: 20px;
+}
+
+.archive-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid #eee;
+}
+
+.date-filters {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.date-filters label {
+  margin-right: 5px;
+}
+
+.status-filter {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.status-filter label {
+  margin-right: 5px;
+}
+
+.status-filter select {
+  padding: 8px;
+  border: 2px solid #e0e0e0;
+  border-radius: 10px;
+  background: white;
+  font-size: 14px;
+}
+
+.archive-search {
+  display: flex;
+  flex: 1;
+  gap: 5px;
+}
+
+.archive-search input {
+  flex: 1;
+  padding: 12px 15px;
+  border: 2px solid #e0e0e0;
+  border-radius: 10px;
+  font-size: 16px;
+}
+
+.archive-search input:focus {
+  border-color: #3498db;
+  outline: none;
+}
+
+.archive-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.archive-table th,
+.archive-table td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid #eee;
+}
+
+.archive-table th {
+  background-color: #f8f9fa;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+/* Input group styles for modals */
+.input-group {
+  margin-bottom: 15px;
+}
+
+.input-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+  color: #2c3e50;
+}
+
+.input-group input,
+.input-group select {
+  width: 100%;
+  padding: 12px;
+  border: 2px solid #e0e0e0;
+  border-radius: 10px;
+  font-size: 16px;
+  box-sizing: border-box;
+}
+
+.input-group input:focus,
+.input-group select:focus {
+  border-color: #3498db;
+  outline: none;
+}
+
+.input-group span {
+  font-size: 0.85em;
+  color: #666;
+  display: block;
+  margin-top: 5px;
+}
+
+.primary-btn {
+  background: #2ecc71;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 12px 20px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background 0.3s;
+}
+
+.primary-btn:hover {
+  background: #27ae60;
+}
+
+.secondary-btn {
+  background: #95a5a6;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 12px 20px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background 0.3s;
+}
+
+.secondary-btn:hover {
+  background: #7f8c8d;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px solid #eee;
+}
+
+@media (max-width: 900px) {
+  .dashboard-content {
+    grid-template-columns: 1fr;
+  }
+
+  .archive-filters {
+    flex-direction: column;
+  }
+
+  .archive-search {
+    width: 100%;
+  }
+}

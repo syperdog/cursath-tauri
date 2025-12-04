@@ -1,0 +1,102 @@
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background-color: white;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 800px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  color: #333; /* Установим темный цвет текста */
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  border-bottom: 1px solid #eee;
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+
+.modal-body {
+  padding: 16px;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.order-details {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.client-info, .car-info, .status-info {
+  border: 1px solid #ddd;
+  padding: 12px;
+  border-radius: 4px;
+}
+
+.status-badge {
+  padding: 4px 8px;
+  background-color: #e0e0e0;
+  border-radius: 4px;
+  display: inline-block;
+}
+
+.order-complaint, .order-mileage, .order-payment {
+  margin-bottom: 16px;
+  padding: 8px 0;
+}
+
+.payment-details {
+  display: flex;
+  gap: 16px;
+}
+
+.payment-details p {
+  margin: 4px 0;
+}
+
+@media (max-width: 768px) {
+  .modal-content {
+    width: 95%;
+    margin: 20px;
+  }
+  
+  .order-details {
+    grid-template-columns: 1fr;
+  }
+  
+  .payment-details {
+    flex-direction: column;
+    gap: 8px;
+  }
+}
