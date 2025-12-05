@@ -1,0 +1,65 @@
+.diagnostics-modal .modal-content {
+  width: 700px;
+}
+
+.diagnostics-modal .client-complaint {
+  margin: 15px 0;
+  padding: 10px;
+  background-color: #f9f9f9;
+  border-left: 3px solid #3498db;
+}
+
+.faults-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 15px 0;
+}
+
+.faults-table th,
+.faults-table td {
+  border: 1px solid #ddd;
+  padding: 8px;
+  text-align: left;
+}
+
+.faults-table th {
+  background-color: #eee;
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+  margin: 15px 0;
+}
+
+.add-fault-button,
+.remove-fault-button {
+  padding: 8px 16px;
+  border: none;
+  cursor: pointer;
+  font-family: monospace;
+}
+
+.add-fault-button {
+  background-color: #3498db;
+  color: white;
+}
+
+.remove-fault-button {
+  background-color: #e74c3c;
+  color: white;
+}
+
+.remove-fault-button:disabled {
+  background-color: #bdc3c7;
+  cursor: not-allowed;
+}
+
+.complete-diagnosis-button {
+  background-color: #27ae60;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  font-size: 1.1em;
+  cursor: pointer;
+}

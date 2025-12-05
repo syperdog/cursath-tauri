@@ -1,0 +1,31 @@
+.fault-catalog {
+  width: 100%;
+  padding: 20px;
+  font-family: monospace;
+}
+
+.fault-catalog h2 {
+  margin-top: 0;
+  font-size: 1.2em;
+}
+
+.catalog-content {
+  overflow-y: auto;
+  max-height: 400px;
+}
+
+.fault-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.fault-table th,
+.fault-table td {
+  border: 1px solid #ddd;
+  padding: 8px;
+  text-align: left;
+}
+
+.fault-table th {
+  background-color: #eee;
+}

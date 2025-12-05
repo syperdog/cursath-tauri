@@ -5,6 +5,7 @@ import LoginForm from "./components/LoginForm";
 import MasterDashboard from "./components/MasterDashboard";
 import AdminDashboard from "./components/AdminDashboard";
 import WorkerDashboard from "./components/WorkerDashboard";
+import DiagnosticianDashboard from "./components/DiagnosticianDashboard";
 import { User } from "./types/user";
 
 function App() {
@@ -53,7 +54,7 @@ function App() {
           setCurrentView('login');
         }} />;
       case 'diagnostician':
-        return <div>Diagnostician Dashboard (Coming Soon)</div>;
+        return <DiagnosticianDashboard />;
       case 'storekeeper':
         return <div>Storekeeper Dashboard (Coming Soon)</div>;
       case 'worker':
