@@ -1,17 +1,7 @@
 import React, { useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import { User } from '../types/user';
 import './LoginForm.css';
-
-// Define User interface (should match the Rust struct)
-interface User {
-  id: number;
-  full_name: string;
-  role: string;
-  login: string | null;
-  password_hash: string | null;
-  pin_code: string | null;
-  status: string;
-}
 
 interface LoginFormData {
   username: string;

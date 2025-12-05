@@ -1,21 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import { User } from '../types/user';
 import OrderDetailsModal from './OrderDetailsModal';
 import './MasterDashboard.css';
 import SearchModal from './SearchModal';
 import NewClientModal from './NewClientModal';
 import NewCarModal from './NewCarModal';
 import AssignWorkersModal from './AssignWorkersModal';
-
-interface User {
-  id: number;
-  full_name: string;
-  role: string;
-  login: string | null;
-  password_hash: string | null;
-  pin_code: string | null;
-  status: string;
-}
 
 interface Order {
   id: number;

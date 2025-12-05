@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { invoke } from '@tauri-apps/api/tauri';
-import { User } from '../types/tauri';
+import { invoke } from '@tauri-apps/api/core';
+import { User } from '../types/user';
 
 import './AdminDashboard.css';
 
@@ -10,48 +10,65 @@ interface AdminDashboardProps {
 }
 
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
-  const [activeTab, setActiveTab] = useState<'users' | 'settings'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'settings' | 'logs'>('users');
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [systemSettings, setSystemSettings] = useState<any>(null);
+  const [logs, setLogs] = useState<any[]>([]);
+  const [logsLoading, setLogsLoading] = useState(false);
   
   // Форма для добавления/редактирования сотрудника
   const [showUserForm, setShowUserForm] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [newUserData, setNewUserData] = useState({
+    id: 0,
     full_name: '',
     role: 'Worker',
     login: '',
-    password: '',
+    password_hash: '',
     pin_code: '',
     status: 'Active'
   });
 
-  // Загрузка списка пользователей
+  // Загрузка данных в зависимости от активной вкладки
   useEffect(() => {
-    const fetchUsers = async () => {
+    const fetchData = async () => {
       try {
-        const response: User[] = await invoke('get_all_users');
-        setUsers(response);
-        setLoading(false);
+        setLoading(true);
+        setError(null);
+
+        if (activeTab === 'users') {
+          const response: User[] = await invoke('get_all_users');
+          setUsers(response);
+        } else if (activeTab === 'settings') {
+          const settings: string = await invoke('get_system_settings');
+          setSystemSettings(JSON.parse(settings));
+        } else if (activeTab === 'logs') {
+          setLogsLoading(true);
+          const logsData: string = await invoke('get_system_logs', { filters: '{}' });
+          setLogs(JSON.parse(logsData));
+          setLogsLoading(false);
+        }
       } catch (err) {
-        setError('Ошибка загрузки пользователей: ' + (err as Error).message);
+        console.error('Error in fetchData:', err);
+        setError('Ошибка загрузки данных: ' + (err as Error).message);
+      } finally {
         setLoading(false);
       }
     };
-    
-    if (activeTab === 'users') {
-      fetchUsers();
-    }
+
+    fetchData();
   }, [activeTab]);
 
   const handleAddUser = () => {
     setEditingUser(null);
     setNewUserData({
+      id: 0, // будет установлен сервером
       full_name: '',
       role: 'Worker',
       login: '',
-      password: '',
+      password_hash: '',
       pin_code: '',
       status: 'Active'
     });
@@ -61,10 +78,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
   const handleEditUser = (user: User) => {
     setEditingUser(user);
     setNewUserData({
+      id: user.id,
       full_name: user.full_name || '',
       role: user.role || 'Worker',
       login: user.login || '',
-      password: '',
+      password_hash: '',
       pin_code: user.pin_code || '',
       status: user.status || 'Active'
     });
@@ -79,6 +97,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
         const response: User[] = await invoke('get_all_users');
         setUsers(response);
       } catch (err) {
+        console.error('Error deleting user:', err);
         setError('Ошибка удаления пользователя: ' + (err as Error).message);
       }
     }
@@ -87,22 +106,28 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
   const handleSubmitUser = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      // Обновляем/создаем пользователя
       if (editingUser) {
-        // Обновляем пользователя
-        await invoke('update_user', { 
-          userId: editingUser.id, 
-          userData: newUserData 
+        await invoke('update_user', {
+          user_id: editingUser.id,
+          user_data: {
+            ...newUserData,
+            // Используем пароль только если он был изменен
+            password_hash: newUserData.password_hash || editingUser?.password_hash
+          }
         });
       } else {
-        // Создаем нового пользователя
-        await invoke('create_user', { userData: newUserData });
+        await invoke('create_user', {
+          user_data: newUserData
+        });
       }
-      
+
       // Обновляем список пользователей
       const response: User[] = await invoke('get_all_users');
       setUsers(response);
       setShowUserForm(false);
     } catch (err) {
+      console.error('Error saving user:', err);
       setError('Ошибка сохранения пользователя: ' + (err as Error).message);
     }
   };
@@ -115,31 +140,42 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
     }));
   };
 
+  console.log("AdminDashboard rendering with user:", user);
+  console.log("Active tab:", activeTab);
+  console.log("Loading:", loading);
+
   return (
     <div className="admin-dashboard">
       <div className="dashboard-header">
         <h1>Панель администратора</h1>
-        <h2>Добро пожаловать, {user.full_name}</h2>
+        <h2>Добро пожаловать, {user?.full_name || 'Администратор'}</h2>
         <button className="logout-btn" onClick={onLogout}>Выйти</button>
       </div>
 
       <div className="dashboard-content">
-        <div className="sidebar">
-          <button 
-            className={activeTab === 'users' ? 'active' : ''} 
-            onClick={() => setActiveTab('users')}
-          >
-            Управление сотрудниками
-          </button>
-          <button 
-            className={activeTab === 'settings' ? 'active' : ''} 
-            onClick={() => setActiveTab('settings')}
-          >
-            Настройки системы
-          </button>
-        </div>
+        <div className="content-wrapper">
+          <div className="sidebar">
+            <button
+              className={activeTab === 'users' ? 'active' : ''}
+              onClick={() => setActiveTab('users')}
+            >
+              Управление сотрудниками
+            </button>
+            <button
+              className={activeTab === 'settings' ? 'active' : ''}
+              onClick={() => setActiveTab('settings')}
+            >
+              Настройки системы
+            </button>
+            <button
+              className={activeTab === 'logs' ? 'active' : ''}
+              onClick={() => setActiveTab('logs')}
+            >
+              Журнал событий
+            </button>
+          </div>
 
-        <div className="main-content">
+          <div className="main-content">
           {activeTab === 'users' && (
             <div className="users-section">
               <div className="section-header">
@@ -192,12 +228,188 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
           {activeTab === 'settings' && (
             <div className="settings-section">
               <h2>Настройки системы</h2>
-              <p>Здесь будут настройки системы.</p>
-              {/* Добавим заглушку для будущих настроек */}
+              {loading ? (
+                <p>Загрузка настроек...</p>
+              ) : systemSettings ? (
+                <div className="settings-form">
+                  <h3>Информация об организации</h3>
+                  <div className="form-group">
+                    <label>Название:</label>
+                    <input
+                      type="text"
+                      defaultValue={systemSettings.company_name}
+                      id="company-name"
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label>Адрес:</label>
+                    <input
+                      type="text"
+                      defaultValue={systemSettings.address}
+                      id="company-address"
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label>Телефон:</label>
+                    <input
+                      type="text"
+                      defaultValue={systemSettings.phone}
+                      id="company-phone"
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label>Стоимость диагностики (фиксированная):</label>
+                    <input
+                      type="number"
+                      defaultValue={systemSettings.diagnostics_cost}
+                      id="diagnostics-cost"
+                    /> $
+                  </div>
+
+                  <h3>График работы</h3>
+                  <div className="schedule-container">
+                    <div className="form-group">
+                      <label>Пн-Пт:</label>
+                      <input
+                        type="text"
+                        defaultValue={systemSettings.work_schedule.mon_to_fri}
+                        id="schedule-mon-fri"
+                      />
+                    </div>
+
+                    <div className="form-group">
+                      <label>Сб:</label>
+                      <input
+                        type="text"
+                        defaultValue={systemSettings.work_schedule.saturday}
+                        id="schedule-saturday"
+                      />
+                    </div>
+
+                    <div className="form-group">
+                      <label>Вс:</label>
+                      <input
+                        type="text"
+                        defaultValue={systemSettings.work_schedule.sunday}
+                        id="schedule-sunday"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="form-actions">
+                    <button
+                      className="save-btn"
+                      onClick={async () => {
+                        try {
+                          // Собираем данные из формы
+                          const updatedSettings = {
+                            company_name: (document.getElementById('company-name') as HTMLInputElement).value,
+                            address: (document.getElementById('company-address') as HTMLInputElement).value,
+                            phone: (document.getElementById('company-phone') as HTMLInputElement).value,
+                            diagnostics_cost: (document.getElementById('diagnostics-cost') as HTMLInputElement).value,
+                            work_schedule: {
+                              mon_to_fri: (document.getElementById('schedule-mon-fri') as HTMLInputElement).value,
+                              saturday: (document.getElementById('schedule-saturday') as HTMLInputElement).value,
+                              sunday: (document.getElementById('schedule-sunday') as HTMLInputElement).value
+                            }
+                          };
+
+                          await invoke('save_system_settings', {
+                            settings: JSON.stringify(updatedSettings)
+                          });
+                          alert('Настройки успешно сохранены');
+                        } catch (err) {
+                          console.error('Error saving settings:', err);
+                          setError('Ошибка сохранения настроек: ' + (err as Error).message);
+                        }
+                      }}
+                    >
+                      Сохранить
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <p>Не удалось загрузить настройки</p>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'logs' && (
+            <div className="logs-section">
+              <div className="section-header">
+                <h2>Журнал событий</h2>
+                <div className="logs-controls">
+                  <select id="log-filter">
+                    <option>Все события</option>
+                    <option>Вход</option>
+                    <option>Ошибки</option>
+                    <option>Изменения</option>
+                  </select>
+                  <input type="text" placeholder="Поиск..." id="log-search" />
+                  <button onClick={async () => {
+                    try {
+                      setLogsLoading(true);
+                      const filters = {
+                        filter: (document.getElementById('log-filter') as HTMLSelectElement).value,
+                        search: (document.getElementById('log-search') as HTMLInputElement).value
+                      };
+                      const logsData: string = await invoke('get_system_logs', {
+                        filters: JSON.stringify(filters)
+                      });
+                      setLogs(JSON.parse(logsData));
+                    } catch (err) {
+                      console.error('Error loading logs:', err);
+                      setError('Ошибка загрузки логов: ' + (err as Error).message);
+                    } finally {
+                      setLogsLoading(false);
+                    }
+                  }}>🔍</button>
+                </div>
+              </div>
+
+              {logsLoading ? (
+                <p>Загрузка логов...</p>
+              ) : (
+                <table className="logs-table">
+                  <thead>
+                    <tr>
+                      <th>Дата и Время</th>
+                      <th>Пользователь</th>
+                      <th>Событие</th>
+                      <th>Детали</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {logs.map((log, index) => (
+                      <tr key={index}>
+                        <td>{log.timestamp}</td>
+                        <td>{log.user}</td>
+                        <td>{log.event}</td>
+                        <td>{log.details}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+
+              <div className="logs-actions">
+                <button className="export-btn">📥 Экспорт в CSV</button>
+              </div>
             </div>
           )}
         </div>
+        <div className="role-preview">
+          <h3>Просмотр ролей:</h3>
+          <button onClick={() => window.location.hash = '#master'}>Мастер-Приемщик</button>
+          <button onClick={() => window.location.hash = '#diagnostician'}>Диагност</button>
+          <button onClick={() => window.location.hash = '#storekeeper'}>Кладовщик</button>
+          <button onClick={() => window.location.hash = '#worker'}>Работник</button>
+        </div>
       </div>
+    </div>
 
       {/* Модальное окно для добавления/редактирования сотрудника */}
       {showUserForm && (
@@ -247,10 +459,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
                 <label>Пароль:</label>
                 <input
                   type="password"
-                  name="password"
-                  value={newUserData.password}
+                  name="password_hash"
+                  value={newUserData.password_hash}
                   onChange={handleInputChange}
-                  required={!editingUser} // Не обязательно для редактирования
+                  placeholder={editingUser ? "Оставьте пустым, чтобы не менять" : ""}
                 />
               </div>
               

@@ -1,5 +1,6 @@
 use tauri::{Manager, async_runtime::block_on};
 use serde::{Deserialize, Serialize};
+use sqlx::Row;
 
 mod database;
 use database::Database;
@@ -427,6 +428,152 @@ async fn create_order(client_id: i32, car_id: i32, _complaint: Option<String>, _
     Ok(format!("Order created successfully for client {} and car {}", client_id, car_id))
 }
 
+// User management
+#[tauri::command]
+async fn get_all_users(state: tauri::State<'_, Database>) -> Result<Vec<User>, String> {
+    let query = "SELECT id, full_name, role::text, login, password_hash, pin_code, status::text FROM users";
+    let rows = sqlx::query(query)
+        .fetch_all(&state.pool)
+        .await
+        .map_err(|e| format!("Database error: {}", e))?;
+
+    let mut users = Vec::new();
+    for row in rows {
+        users.push(User {
+            id: row.get("id"),
+            full_name: row.get("full_name"),
+            role: row.get("role"),
+            login: row.get("login"),
+            password_hash: row.get("password_hash"),
+            pin_code: row.get("pin_code"),
+            status: row.get("status"),
+        });
+    }
+
+    Ok(users)
+}
+
+#[tauri::command]
+async fn create_user(user_data: User, state: tauri::State<'_, Database>) -> Result<User, String> {
+    use bcrypt::hash;
+
+    // Hash the password if it exists
+    let password_hash = if let Some(password) = &user_data.password_hash {
+        if !password.is_empty() {
+            Some(hash(password, 12).map_err(|e| format!("Password hash error: {}", e))?)
+        } else {
+            None
+        }
+    } else {
+        None
+    };
+
+    let query = "INSERT INTO users (full_name, role, login, password_hash, pin_code, status) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id";
+    let row = sqlx::query(query)
+        .bind(&user_data.full_name)
+        .bind(&user_data.role)
+        .bind(&user_data.login)
+        .bind(&password_hash)
+        .bind(&user_data.pin_code)
+        .bind(&user_data.status)
+        .fetch_one(&state.pool)
+        .await
+        .map_err(|e| format!("Database error: {}", e))?;
+
+    let new_id: i32 = row.get("id");
+
+    // Return the created user
+    Ok(User {
+        id: new_id,
+        full_name: user_data.full_name,
+        role: user_data.role,
+        login: user_data.login,
+        password_hash,
+        pin_code: user_data.pin_code,
+        status: user_data.status,
+    })
+}
+
+#[tauri::command]
+async fn update_user(user_id: i32, user_data: User, state: tauri::State<'_, Database>) -> Result<String, String> {
+    use bcrypt::hash;
+
+    // Hash the password if it exists
+    let password_hash = if let Some(password) = &user_data.password_hash {
+        if !password.is_empty() {
+            Some(hash(password, 12).map_err(|e| format!("Password hash error: {}", e))?)
+        } else {
+            None
+        }
+    } else {
+        None
+    };
+
+    let query = "UPDATE users SET full_name=$1, role=$2, login=$3, password_hash=$4, pin_code=$5, status=$6 WHERE id=$7";
+    sqlx::query(query)
+        .bind(&user_data.full_name)
+        .bind(&user_data.role)
+        .bind(&user_data.login)
+        .bind(&password_hash)
+        .bind(&user_data.pin_code)
+        .bind(&user_data.status)
+        .bind(user_id)
+        .execute(&state.pool)
+        .await
+        .map_err(|e| format!("Database error: {}", e))?;
+
+    Ok("User updated successfully".to_string())
+}
+
+#[tauri::command]
+async fn delete_user(user_id: i32, state: tauri::State<'_, Database>) -> Result<String, String> {
+    let query = "DELETE FROM users WHERE id=$1";
+    sqlx::query(query)
+        .bind(user_id)
+        .execute(&state.pool)
+        .await
+        .map_err(|e| format!("Database error: {}", e))?;
+
+    Ok("User deleted successfully".to_string())
+}
+
+// System settings
+#[tauri::command]
+async fn get_system_settings(_state: tauri::State<'_, Database>) -> Result<String, String> {
+    // For now, return a placeholder JSON string
+    // In a real implementation, this would retrieve actual system settings from the database
+    Ok(r#"{
+        "company_name": "ООО 'АвтоСервис Про'",
+        "address": "г. Минск, ул. Ленина, 1",
+        "phone": "+375 () ___-__-__",
+        "diagnostics_cost": 500,
+        "work_schedule": {
+            "mon_to_fri": "09:00 - 18:00",
+            "saturday": "10:00 - 15:00",
+            "sunday": "Выходной"
+        }
+    }"#.to_string())
+}
+
+#[tauri::command]
+async fn save_system_settings(_settings: String, _state: tauri::State<'_, Database>) -> Result<String, String> {
+    // For now, just return success
+    // In a real implementation, this would save the settings to the database
+    Ok("System settings saved successfully".to_string())
+}
+
+// Event logs
+#[tauri::command]
+async fn get_system_logs(_filters: String, _state: tauri::State<'_, Database>) -> Result<String, String> {
+    // For now, return placeholder log entries as JSON
+    // In a real implementation, this would query the actual logs from the database based on filters
+    Ok(r#"[
+        {"timestamp": "30.11.2025 10:15", "user": "admin", "event": "Вход", "details": "Успешный вход"},
+        {"timestamp": "30.11.2025 10:20", "user": "master", "event": "Создание", "details": "Заказ #105"},
+        {"timestamp": "30.11.2025 11:00", "user": "admin", "event": "Удаление", "details": "User: worker2"}
+    ]"#.to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -450,7 +597,14 @@ pub fn run() {
             get_client_by_id,
             get_car_by_id,
             search_orders_clients_cars,
-            create_order
+            create_order,
+            get_all_users,
+            create_user,
+            update_user,
+            delete_user,
+            get_system_settings,
+            save_system_settings,
+            get_system_logs
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

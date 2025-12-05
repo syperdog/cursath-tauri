@@ -3,16 +3,8 @@ import { invoke } from '@tauri-apps/api/core';
 import "./App.css";
 import LoginForm from "./components/LoginForm";
 import MasterDashboard from "./components/MasterDashboard";
-
-interface User {
-  id: number;
-  full_name: string;
-  role: string;
-  login: string | null;
-  password_hash: string | null;
-  pin_code: string | null;
-  status: string;
-}
+import AdminDashboard from "./components/AdminDashboard";
+import { User } from "./types/user";
 
 function App() {
   const [currentView, setCurrentView] = useState<'login' | 'master' | 'admin' | 'diagnostician' | 'storekeeper' | 'worker'>('login');
@@ -54,7 +46,11 @@ function App() {
       case 'master':
         return <MasterDashboard />;
       case 'admin':
-        return <div>Admin Dashboard (Coming Soon)</div>;
+        return <AdminDashboard user={user!} onLogout={() => {
+          // Логика выхода пользователя
+          localStorage.removeItem('sessionToken');
+          setCurrentView('login');
+        }} />;
       case 'diagnostician':
         return <div>Diagnostician Dashboard (Coming Soon)</div>;
       case 'storekeeper':
