@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import './DiagnosticianDashboard.css';
+import DiagnosticsModal from './DiagnosticsModal';
 
 // Типы данных для заказа и автомобиля
 type Order = {
@@ -19,6 +20,9 @@ const DiagnosticianDashboard: React.FC = () => {
   // Состояние для выбранного заказа
   const [selectedOrder, setSelectedOrder] = useState<number | null>(null);
 
+  // Состояние для отображения модального окна диагностики
+  const [showDiagnosticsModal, setShowDiagnosticsModal] = useState(false);
+
   // Функция для обработки выбора заказа
   const handleSelectOrder = (orderId: number) => {
     setSelectedOrder(orderId);
@@ -27,21 +31,43 @@ const DiagnosticianDashboard: React.FC = () => {
   // Функция для начала диагностики
   const handleStartDiagnosis = () => {
     if (selectedOrder !== null) {
-      // В реальном приложении здесь открылось бы окно диагностики
-      alert(`Начинаем диагностику для заказа #${selectedOrder}`);
+      setShowDiagnosticsModal(true);
     }
+  };
+
+  // Функция для завершения диагностики
+  const handleDiagnosisComplete = (faults: any[]) => {
+    console.log(`Диагностика для заказа #${selectedOrder} завершена. Неисправности:`, faults);
+    // Здесь будет логика сохранения результатов диагностики
+    setShowDiagnosticsModal(false);
+  };
+
+  // Функция для закрытия модального окна
+  const handleCloseModal = () => {
+    setShowDiagnosticsModal(false);
+  };
+
+  const handleLogout = () => {
+    // Сбросить данные сессии
+    localStorage.removeItem('sessionToken');
+    localStorage.removeItem('userRole');
+    localStorage.removeItem('userId');
+    localStorage.removeItem('userName');
+
+    // Перенаправить на страницу входа
+    window.location.hash = '#login';
   };
 
   return (
     <div className="dashboard diagnostician-dashboard">
       <div className="dashboard-header">
         <h1>🔍 ДИАГНОСТ: Иванов И.И.</h1>
-        <button className="exit-button">✖ ВЫХОД</button>
+        <button className="exit-button" onClick={handleLogout}>✖ ВЫХОД</button>
       </div>
 
       <div className="dashboard-content">
         <h2>ОЖИДАЮТ ДИАГНОСТИКИ:</h2>
-        
+
         <div className="orders-table">
           <table>
             <thead>
@@ -54,8 +80,8 @@ const DiagnosticianDashboard: React.FC = () => {
             </thead>
             <tbody>
               {orders.map(order => (
-                <tr 
-                  key={order.id} 
+                <tr
+                  key={order.id}
                   className={selectedOrder === order.id ? 'selected' : ''}
                   onClick={() => handleSelectOrder(order.id)}
                 >
@@ -70,8 +96,8 @@ const DiagnosticianDashboard: React.FC = () => {
         </div>
 
         <div className="dashboard-actions">
-          <button 
-            className="start-diagnosis-button" 
+          <button
+            className="start-diagnosis-button"
             onClick={handleStartDiagnosis}
             disabled={selectedOrder === null}
           >
@@ -79,6 +105,16 @@ const DiagnosticianDashboard: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* Модальное окно диагностики */}
+      {showDiagnosticsModal && selectedOrder && (
+        <DiagnosticsModal
+          orderId={selectedOrder}
+          clientComplaint={orders.find(o => o.id === selectedOrder)?.issueDescription || ''}
+          onClose={handleCloseModal}
+          onDiagnosisComplete={handleDiagnosisComplete}
+        />
+      )}
     </div>
   );
 };
