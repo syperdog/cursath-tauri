@@ -82,29 +82,41 @@ async fn login_user(username: String, password: String, state: tauri::State<'_, 
         .map_err(|e| format!("Database error: {}", e))?;
 
     if let Some(row) = row {
-        // In a real application, you would hash the input password and compare it with the stored hash
-        // For now, we'll just check if password is provided (a real implementation would properly hash and compare)
-        if !password.is_empty() {
-            let user = User {
-                id: row.get("id"),
-                full_name: row.get("full_name"),
-                role: row.get("role"),
-                login: row.get("login"),
-                password_hash: row.get("password_hash"),
-                pin_code: row.get("pin_code"),
-                status: row.get("status"),
-            };
+        let stored_hash: Option<String> = row.get("password_hash");
 
-            // Create a session token
-            let session_token = Uuid::new_v4().to_string();
-            {
-                let mut sessions = SESSIONS.lock().map_err(|_| "Session lock error")?;
-                sessions.insert(session_token.clone(), user.clone());
+        // Check if the user has a password hash and if it matches
+        if let Some(hash) = stored_hash {
+            // Verify the provided password against the stored hash
+            match bcrypt::verify(&password, &hash) {
+                Ok(valid) => {
+                    if valid {
+                        let user = User {
+                            id: row.get("id"),
+                            full_name: row.get("full_name"),
+                            role: row.get("role"),
+                            login: row.get("login"),
+                            password_hash: row.get("password_hash"),
+                            pin_code: row.get("pin_code"),
+                            status: row.get("status"),
+                        };
+
+                        // Create a session token
+                        let session_token = Uuid::new_v4().to_string();
+                        {
+                            let mut sessions = SESSIONS.lock().map_err(|_| "Session lock error")?;
+                            sessions.insert(session_token.clone(), user.clone());
+                        }
+
+                        // Return both user and session token
+                        Ok((user, session_token))
+                    } else {
+                        Err("Неправильный логин или пароль".to_string())
+                    }
+                }
+                Err(_) => Err("Ошибка при проверке пароля".to_string()),
             }
-
-            // Return both user and session token
-            Ok((user, session_token))
         } else {
+            // If no password hash exists for the user
             Err("Неправильный логин или пароль".to_string())
         }
     } else {

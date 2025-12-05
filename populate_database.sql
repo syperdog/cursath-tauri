@@ -1,14 +1,14 @@
 -- Файл для заполнения базы данных начальными данными
 
 -- 1. Заполнение таблицы пользователей
-INSERT INTO users (full_name, role, login, password_hash, status) VALUES
-('Иванов Иван Иванович', 'Admin', 'admin', 'hashed_password_1', 'Active'),
-('Петров Петр Петрович', 'Master', 'master', 'hashed_password_2', 'Active'),
-('Сидоров Алексей Николаевич', 'Diagnostician', 'diagnostician', 'hashed_password_3', 'Active'),
-('Кузнецов Михаил Дмитриевич', 'Storekeeper', 'storekeeper', 'hashed_password_4', 'Active'),
-('Волков Сергей Алексеевич', 'Worker', 'worker', 'hashed_password_5', 'Active'),
-('Козлов Дмитрий Андреевич', 'Worker', 'worker2', 'hashed_password_6', 'Active'),
-('Морозов Алексей Викторович', 'Worker', 'worker3', 'hashed_password_7', 'Active');
+INSERT INTO users (full_name, role, login, password_hash, pin_code, status) VALUES
+('Иванов Иван Иванович', 'Admin', 'admin', '$2b$12$YYxIc45EH7nOnqRvyvUagertbtwfMagYG.BkYA9Bu/5yQx3ALp8z2', NULL, 'Active'),
+('Петров Петр Петрович', 'Master', 'master', '$2b$12$RuBuo/ykzLQjrk0xvyMxU.XbVNgGoha51HnFidkFqoAtT9JBNGWaG', NULL, 'Active'),
+('Сидоров Алексей Николаевич', 'Diagnostician', 'diagnostician', '$2b$12$XwZEeGVI/iz6Of6KlHTt..Of.uoFVFOm.aTQbr60ufaquS5ctgw9K', NULL, 'Active'),
+('Кузнецов Михаил Дмитриевич', 'Storekeeper', 'storekeeper', '$2b$12$fgZvEJW4FUN/EdbFZHtsIOsaqMJvPwMwFDUFWwSFyP6hk3.Mb2OOC', NULL, 'Active'),
+('Волков Сергей Алексеевич', 'Worker', 'worker', NULL, '1234', 'Active'),
+('Козлов Дмитрий Андреевич', 'Worker', 'worker2', NULL, '1234', 'Active'),
+('Морозов Алексей Викторович', 'Worker', 'worker3', NULL, '1234', 'Active');
 
 -- 2. Заполнение таблицы клиентов
 INSERT INTO clients (full_name, phone, address) VALUES
