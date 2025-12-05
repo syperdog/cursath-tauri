@@ -77,15 +77,19 @@ const LoginForm: React.FC = () => {
         {isPinMode ? (
           <div className="login-form pin-mode">
             <h2>🔧 ВХОД ДЛЯ СОТРУДНИКОВ (ТЕРМИНАЛ ЦЕХА)</h2>
-            
+
             <div className="pin-input-container">
               <div className="pin-display">
-                {[0, 1, 2, 3].map(i => (
-                  <div 
-                    key={i} 
-                    className={`pin-dot ${i < pinData.pin.length ? 'filled' : ''}`}
-                  />
-                ))}
+                <div className="pin-digits">
+                  {Array.from({ length: 4 }).map((_, index) => (
+                    <span
+                      key={index}
+                      className={`pin-digit ${index < pinData.pin.length ? 'filled' : ''}`}
+                    >
+                      {index < pinData.pin.length ? '*' : '_'}
+                    </span>
+                  ))}
+                </div>
               </div>
             </div>
 
@@ -99,26 +103,26 @@ const LoginForm: React.FC = () => {
 
             <div className="pin-keypad">
               <div className="keypad-row">
-                <button onClick={() => handlePinButtonClick('1')}>1</button>
-                <button onClick={() => handlePinButtonClick('2')}>2</button>
-                <button onClick={() => handlePinButtonClick('3')}>3</button>
-                <button onClick={() => handlePinButtonClick('4')}>4</button>
+                <button className="keypad-button" onClick={() => handlePinButtonClick('1')}>1</button>
+                <button className="keypad-button" onClick={() => handlePinButtonClick('2')}>2</button>
+                <button className="keypad-button" onClick={() => handlePinButtonClick('3')}>3</button>
+                <button className="keypad-button" onClick={() => handlePinButtonClick('4')}>4</button>
               </div>
               <div className="keypad-row">
-                <button onClick={() => handlePinButtonClick('5')}>5</button>
-                <button onClick={() => handlePinButtonClick('6')}>6</button>
-                <button onClick={() => handlePinButtonClick('7')}>7</button>
-                <button onClick={() => handlePinButtonClick('8')}>8</button>
+                <button className="keypad-button" onClick={() => handlePinButtonClick('5')}>5</button>
+                <button className="keypad-button" onClick={() => handlePinButtonClick('6')}>6</button>
+                <button className="keypad-button" onClick={() => handlePinButtonClick('7')}>7</button>
+                <button className="keypad-button" onClick={() => handlePinButtonClick('8')}>8</button>
               </div>
               <div className="keypad-row">
-                <button onClick={() => handlePinButtonClick('9')}>9</button>
-                <button onClick={() => handlePinButtonClick('0')}>0</button>
-                <button onClick={handleBackspace}>⌫</button>
-                <button onClick={handleSubmit} className="submit-btn">✓</button>
+                <button className="keypad-button" onClick={() => handlePinButtonClick('9')}>9</button>
+                <button className="keypad-button" onClick={() => handlePinButtonClick('0')}>0</button>
+                <button className="keypad-button special-button" onClick={handleBackspace}>⌫</button>
+                <button className="keypad-button submit-btn" onClick={handleSubmit}>🆗</button>
               </div>
             </div>
 
-            <button 
+            <button
               className="switch-mode-btn"
               onClick={() => setIsPinMode(false)}
             >

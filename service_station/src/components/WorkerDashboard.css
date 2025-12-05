@@ -1,0 +1,130 @@
+.worker-dashboard {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100%;
+  background-color: #f5f5f5;
+  font-family: monospace;
+}
+
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 20px;
+  background-color: #2c3e50;
+  color: white;
+  border-bottom: 2px solid #34495e;
+}
+
+.header-info {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.header-time {
+  font-size: 14px;
+  opacity: 0.8;
+}
+
+.logout-button {
+  background-color: #e74c3c;
+  color: white;
+  border: none;
+  padding: 8px 15px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  font-family: monospace;
+}
+
+.logout-button:hover {
+  background-color: #c0392b;
+}
+
+.dashboard-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  gap: 20px;
+}
+
+.my-tasks {
+  background-color: white;
+  border: 2px solid #34495e;
+  border-radius: 8px;
+  padding: 15px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.my-tasks h2 {
+  margin-top: 0;
+  color: #2c3e50;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 10px;
+}
+
+.orders-table {
+  margin-top: 15px;
+}
+
+.orders-table table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.orders-table th {
+  background-color: #ecf0f1;
+  padding: 10px;
+  text-align: left;
+  border-bottom: 2px solid #bdc3c7;
+}
+
+.orders-table td {
+  padding: 10px;
+  border-bottom: 1px solid #eee;
+}
+
+.orders-table tr:hover {
+  background-color: #f9f9f9;
+}
+
+.orders-table tr.selected {
+  background-color: #d5dbdb;
+  border: 2px solid #3498db;
+}
+
+.no-orders {
+  text-align: center;
+  color: #7f8c8d;
+  font-style: italic;
+}
+
+.action-buttons {
+  display: flex;
+  justify-content: center;
+}
+
+.open-order-button {
+  background-color: #3498db;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: bold;
+  font-family: monospace;
+  margin-top: 10px;
+}
+
+.open-order-button:hover:not(:disabled) {
+  background-color: #2980b9;
+}
+
+.open-order-button:disabled {
+  background-color: #bdc3c7;
+  cursor: not-allowed;
+}

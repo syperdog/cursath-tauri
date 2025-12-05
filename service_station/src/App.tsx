@@ -4,6 +4,7 @@ import "./App.css";
 import LoginForm from "./components/LoginForm";
 import MasterDashboard from "./components/MasterDashboard";
 import AdminDashboard from "./components/AdminDashboard";
+import WorkerDashboard from "./components/WorkerDashboard";
 import { User } from "./types/user";
 
 function App() {
@@ -56,7 +57,7 @@ function App() {
       case 'storekeeper':
         return <div>Storekeeper Dashboard (Coming Soon)</div>;
       case 'worker':
-        return <div>Worker Dashboard (Coming Soon)</div>;
+        return <WorkerDashboard />;
       case 'login':
       default:
         return <LoginForm />;
