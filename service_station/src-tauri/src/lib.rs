@@ -310,113 +310,76 @@ async fn get_car_by_id(car_id: i32) -> Result<Option<Car>, String> {
 }
 
 #[tauri::command]
-async fn search_orders_clients_cars(query: String) -> Result<(Vec<Order>, Vec<Client>, Vec<Car>), String> {
-    // In a real application, this would perform a database search
-    // For now, returning hardcoded results based on query
-    let query_lower = query.to_lowercase();
+async fn search_orders_clients_cars(query: String, state: tauri::State<'_, Database>) -> Result<(Vec<Order>, Vec<Client>, Vec<Car>), String> {
+    let query_lower = format!("%{}%", query.to_lowercase());
 
-    let orders = if query_lower.contains("105") || query_lower.contains("toyota") || query_lower.contains("camry") {
-        vec![Order {
-            id: 105,
-            client_id: 1,
-            car_id: 1,
-            master_id: Some(1),
-            status: "In_Work".to_string(),
-            complaint: Some("Стук в подвеске".to_string()),
-            current_mileage: Some(155000),
-            prepayment: Some("3000".to_string()),
-            total_amount: Some("9000".to_string()),
-            created_at: "2025-11-25T10:00:00".to_string(),
-            completed_at: None,
-        }]
-    } else if query_lower.contains("106") || query_lower.contains("ford") || query_lower.contains("focus") {
-        vec![Order {
-            id: 106,
-            client_id: 2,
-            car_id: 2,
-            master_id: Some(1),
-            status: "Ready".to_string(),
-            complaint: Some("Проблемы с двигателем".to_string()),
-            current_mileage: Some(145000),
-            prepayment: Some("1000".to_string()),
-            total_amount: Some("3500".to_string()),
-            created_at: "2025-11-26T11:00:00".to_string(),
-            completed_at: None,
-        }]
-    } else {
-        vec![]
-    };
+    // Search for orders by ID
+    let order_query = "SELECT id, client_id, car_id, master_id, status::text, complaint, current_mileage, prepayment::text, total_amount::text, created_at::text, completed_at::text FROM orders WHERE id::text LIKE $1";
+    let order_results = sqlx::query(order_query)
+        .bind(&query)
+        .fetch_all(&state.pool)
+        .await
+        .map_err(|e| format!("Database error during order search: {}", e))?;
 
-    let clients = if query_lower.contains("петров") || query_lower.contains("petrov") {
-        vec![Client {
-            id: 1,
-            full_name: "Петров П.П.".to_string(),
-            phone: "+375 (29) 111-22-33".to_string(),
-            address: Some("г. Минск, ул. Ленина, 1".to_string()),
-            created_at: "2024-01-01T00:00:00".to_string(),
-        }]
-    } else if query_lower.contains("сидоров") || query_lower.contains("sidorov") {
-        vec![Client {
-            id: 2,
-            full_name: "Сидоров А.А.".to_string(),
-            phone: "+375 (29) 444-55-66".to_string(),
-            address: Some("г. Минск, ул. Победы, 10".to_string()),
-            created_at: "2024-01-02T00:00:00".to_string(),
-        }]
-    } else if query_lower.contains("иванов") || query_lower.contains("ivanov") {
-        vec![Client {
-            id: 3,
-            full_name: "Иванов И.И.".to_string(),
-            phone: "+375 (33) 777-88-99".to_string(),
-            address: Some("г. Гомель, ул. Строителей, 5".to_string()),
-            created_at: "2024-01-03T00:00:00".to_string(),
-        }]
-    } else {
-        vec![]
-    };
+    let mut orders = Vec::new();
+    for row in order_results {
+        orders.push(Order {
+            id: row.get("id"),
+            client_id: row.get("client_id"),
+            car_id: row.get("car_id"),
+            master_id: row.get("master_id"),
+            status: row.get("status"),
+            complaint: row.get("complaint"),
+            current_mileage: row.get("current_mileage"),
+            prepayment: row.get("prepayment"),
+            total_amount: row.get("total_amount"),
+            created_at: row.get("created_at"),
+            completed_at: row.get("completed_at"),
+        });
+    }
 
-    let cars = if query_lower.contains("toyota") || query_lower.contains("camry") || query_lower.contains("a 123 aa") {
-        vec![Car {
-            id: 1,
-            client_id: 1,
-            vin: Some("WBA1234567890ABCD".to_string()),
-            license_plate: Some("A 123 AA 77".to_string()),
-            make: "Toyota".to_string(),
-            model: "Camry".to_string(),
-            production_year: Some(2015),
-            mileage: 155000,
-            last_visit_date: Some("2025-10-10T00:00:00".to_string()),
-            created_at: "2024-01-01T00:00:00".to_string(),
-        }]
-    } else if query_lower.contains("ford") || query_lower.contains("focus") || query_lower.contains("e 555 kx") {
-        vec![Car {
-            id: 2,
-            client_id: 2,
-            vin: Some("WBA9876543210XYZ".to_string()),
-            license_plate: Some("E 555 KX 99".to_string()),
-            make: "Ford".to_string(),
-            model: "Focus".to_string(),
-            production_year: Some(2018),
-            mileage: 145000,
-            last_visit_date: Some("2025-10-15T00:00:00".to_string()),
-            created_at: "2024-01-02T00:00:00".to_string(),
-        }]
-    } else if query_lower.contains("bmw") || query_lower.contains("x5") || query_lower.contains("т 888 тт") {
-        vec![Car {
-            id: 3,
-            client_id: 3,
-            vin: Some("WBY111222333444555".to_string()),
-            license_plate: Some("Т 888 ТТ 77".to_string()),
-            make: "BMW".to_string(),
-            model: "X5".to_string(),
-            production_year: Some(2020),
-            mileage: 120000,
-            last_visit_date: Some("2025-10-20T00:00:00".to_string()),
-            created_at: "2024-01-03T00:00:00".to_string(),
-        }]
-    } else {
-        vec![]
-    };
+    // Search for clients by full name, phone or address
+    let client_query = "SELECT id, full_name, phone, address, created_at::text FROM clients WHERE LOWER(full_name) LIKE $1 OR LOWER(phone) LIKE $1 OR (address IS NOT NULL AND LOWER(address) LIKE $1)";
+    let client_results = sqlx::query(client_query)
+        .bind(&query_lower)
+        .fetch_all(&state.pool)
+        .await
+        .map_err(|e| format!("Database error during client search: {}", e))?;
+
+    let mut clients = Vec::new();
+    for row in client_results {
+        clients.push(Client {
+            id: row.get("id"),
+            full_name: row.get("full_name"),
+            phone: row.get("phone"),
+            address: row.get("address"),
+            created_at: row.get("created_at"),
+        });
+    }
+
+    // Search for cars by license plate, make, model, or VIN
+    let car_query = "SELECT id, client_id, vin, license_plate, make, model, production_year, mileage, last_visit_date::text, created_at::text FROM cars WHERE LOWER(license_plate) LIKE $1 OR LOWER(make) LIKE $1 OR LOWER(model) LIKE $1 OR (vin IS NOT NULL AND LOWER(vin) LIKE $1)";
+    let car_results = sqlx::query(car_query)
+        .bind(&query_lower)
+        .fetch_all(&state.pool)
+        .await
+        .map_err(|e| format!("Database error during car search: {}", e))?;
+
+    let mut cars = Vec::new();
+    for row in car_results {
+        cars.push(Car {
+            id: row.get("id"),
+            client_id: row.get("client_id"),
+            vin: row.get("vin"),
+            license_plate: row.get("license_plate"),
+            make: row.get("make"),
+            model: row.get("model"),
+            production_year: row.get("production_year"),
+            mileage: row.get("mileage"),
+            last_visit_date: row.get("last_visit_date"),
+            created_at: row.get("created_at"),
+        });
+    }
 
     Ok((orders, clients, cars))
 }

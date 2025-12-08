@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { User } from '../types/user';
 import OrderDetailsModal from './OrderDetailsModal';
 import './MasterDashboard.css';
-import SearchModal from './SearchModal';
 import NewClientModal from './NewClientModal';
 import NewCarModal from './NewCarModal';
 import AssignWorkersModal from './AssignWorkersModal';
@@ -58,6 +57,8 @@ const MasterDashboard: React.FC = () => {
   const [cars, setCars] = useState<Record<number, Car>>({});
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<(Client | Car | Order)[]>([]);
+  const [showSearchDropdown, setShowSearchDropdown] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -74,7 +75,6 @@ const MasterDashboard: React.FC = () => {
     status: 'All',
     search: ''
   });
-  const [showSearchModal, setShowSearchModal] = useState(false);
   const [showNewClientModal, setShowNewClientModal] = useState(false);
   const [showNewCarModal, setShowNewCarModal] = useState(false);
   const [showAssignWorkersModal, setShowAssignWorkersModal] = useState(false);
@@ -265,10 +265,87 @@ const MasterDashboard: React.FC = () => {
     );
   };
 
-  // Обработчик поиска - теперь открывает модальное окно поиска
-  const handleSearch = () => {
-    setShowSearchModal(true);
+  // Функция для поиска клиентов, автомобилей и заказов
+  const performSearch = async (query: string) => {
+    if (query.trim() === '') {
+      setSearchResults([]);
+      setShowSearchDropdown(false);
+      return;
+    }
+
+    try {
+      const [orders, clients, cars] = await invoke<[Order[], Client[], Car[]]>(
+        'search_orders_clients_cars',
+        { query }
+      );
+
+      // Combine all results
+      const results: (Client | Car | Order)[] = [...clients, ...cars, ...orders];
+      setSearchResults(results);
+      setShowSearchDropdown(true);
+    } catch (error) {
+      console.error('Error during search:', error);
+      setSearchResults([]);
+      setShowSearchDropdown(true);
+    }
   };
+
+  // Обработчик изменения текста в поле поиска
+  const handleSearchChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const query = e.target.value;
+    setSearchQuery(query);
+
+    // Perform search with debounce
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    searchTimeoutRef.current = setTimeout(() => {
+      performSearch(query);
+    }, 300); // 300ms debounce
+  };
+
+  // Обработчик клика по результату поиска
+  const handleSearchResultClick = (item: Client | Car | Order) => {
+    setSearchQuery(''); // Clear search query
+    setShowSearchDropdown(false); // Hide dropdown
+    setSearchResults([]); // Clear results
+
+    if ('phone' in item) { // Это клиент
+      handleCreateNewOrder(item as Client, null);
+    } else if ('license_plate' in item) { // Это автомобиль
+      // Найдем клиента для этого автомобиля
+      const client = clients[(item as Car).client_id] || null;
+      handleCreateNewOrder(client, item as Car);
+    } else { // Это заказ
+      // Найдем клиента и автомобиль для этого заказа
+      const order = item as Order;
+      const client = clients[order.client_id] || null;
+      const car = cars[order.car_id] || null;
+      setSelectedOrder(order);
+      setIsModalOpen(true);
+    }
+  };
+
+  // Обработчик клика вне поля поиска
+  const handleClickOutside = (e: MouseEvent) => {
+    if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
+      setShowSearchDropdown(false);
+    }
+  };
+
+  // Установить обработчик клика вне поля поиска
+  useEffect(() => {
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  // Реф для хранения таймера
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  // Реф для контейнера поиска
+  const searchContainerRef = useRef<HTMLDivElement>(null);
 
   // Обработчик выбора результата поиска
   const handleSearchResultSelect = (item: Client | Car | Order) => {
@@ -363,15 +440,73 @@ const MasterDashboard: React.FC = () => {
         </div>
       </header>
 
-      <div className="search-bar">
+      <div className="search-bar" ref={searchContainerRef}>
         <input
           type="text"
           placeholder="Поиск заказа, клиента или авто..."
           value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          onClick={() => handleCreateNewOrder(null, null)} // For new order without search
+          onChange={handleSearchChange}
+          onFocus={() => searchQuery && setShowSearchDropdown(true)}
         />
-        <button className="search-btn" onClick={handleSearch}>🔍</button>
+        {showSearchDropdown && searchResults.length > 0 && (
+          <div className="search-dropdown">
+            <ul>
+              {searchResults.map((result, index) => {
+                if ('phone' in result) { // This is a client
+                  return (
+                    <li
+                      key={`client-${result.id}-${index}`}
+                      className="search-result-item"
+                      onClick={() => handleSearchResultClick(result)}
+                    >
+                      <div>
+                        <strong>👤 {result.full_name}</strong> | 📞 {result.phone}
+                      </div>
+                      <div className="result-details">
+                        {result.address ? result.address : 'Адрес не указан'}
+                      </div>
+                    </li>
+                  );
+                } else if ('license_plate' in result) { // This is a car
+                  return (
+                    <li
+                      key={`car-${result.id}-${index}`}
+                      className="search-result-item"
+                      onClick={() => handleSearchResultClick(result)}
+                    >
+                      <div>
+                        <strong>🚗 {result.make} {result.model}</strong> | 🏷️ {result.license_plate || 'Нет номера'}
+                      </div>
+                      <div className="result-details">
+                        VIN: {result.vin || 'Не указан'} | Год: {result.production_year || 'Не указан'} | Пробег: {result.mileage} км
+                      </div>
+                    </li>
+                  );
+                } else { // This is an order
+                  return (
+                    <li
+                      key={`order-${result.id}-${index}`}
+                      className="search-result-item"
+                      onClick={() => handleSearchResultClick(result)}
+                    >
+                      <div>
+                        <strong>📋 Заказ #{result.id}</strong> | Статус: {result.status}
+                      </div>
+                      <div className="result-details">
+                        {result.complaint || 'Без описания проблемы'}
+                      </div>
+                    </li>
+                  );
+                }
+              })}
+            </ul>
+          </div>
+        )}
+        {showSearchDropdown && searchResults.length === 0 && searchQuery && (
+          <div className="search-dropdown">
+            <p>Ничего не найдено. Попробуйте другой запрос.</p>
+          </div>
+        )}
       </div>
 
       <div className="dashboard-content">
@@ -559,13 +694,6 @@ const MasterDashboard: React.FC = () => {
         />
       )}
 
-      {showSearchModal && (
-        <SearchModal
-          isOpen={showSearchModal}
-          onClose={() => setShowSearchModal(false)}
-          onResultSelect={handleSearchResultSelect}
-        />
-      )}
 
       {showNewClientModal && (
         <NewClientModal
