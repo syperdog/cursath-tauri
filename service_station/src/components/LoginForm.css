@@ -179,14 +179,17 @@
   justify-content: center;
   align-items: center;
   font-family: monospace;
+  color: #2c3e50 !important; /* Добавляем темный цвет текста для лучшей видимости */
 }
 
 .keypad-button:hover {
   background-color: #d5dbdb;
+  color: #2c3e50 !important; /* Убедимся, что цвет текста сохраняется при наведении */
 }
 
 .keypad-button:active {
   background-color: #bdc3c7;
+  color: #2c3e50 !important; /* Убедимся, что цвет текста сохраняется при нажатии */
 }
 
 .special-button {

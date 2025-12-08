@@ -86,23 +86,51 @@
   display: flex;
   justify-content: center;
   align-items: center;
+  color: #2c3e50 !important; /* Устанавливаем темный цвет текста с высоким приоритетом для лучшей видимости */
 }
 
 .keypad-button:hover {
   background-color: #d5dbdb;
+  color: #2c3e50 !important; /* Убедимся, что цвет текста сохраняется при наведении */
 }
 
 .keypad-button:active {
   background-color: #bdc3c7;
+  color: #2c3e50 !important; /* Убедимся, что цвет текста сохраняется при нажатии */
+}
+
+/* Дополнительно переопределяем возможные глобальные стили */
+.worker-pin-login .keypad-button {
+  color: #2c3e50 !important;
+}
+
+.worker-pin-login .keypad-button:hover,
+.worker-pin-login .keypad-button:active {
+  color: #2c3e50 !important;
 }
 
 .special-button {
   background-color: #e74c3c;
-  color: white;
+  color: white !important;
 }
 
 .special-button:hover {
   background-color: #c0392b;
+  color: white !important;
+}
+
+/* Дополнительно переопределяем возможные глобальные стили для специальных кнопок */
+.worker-pin-login .special-button {
+  color: white !important;
+}
+
+.worker-pin-login .special-button:hover {
+  color: white !important;
+}
+
+.keypad-button:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.5); /* Добавим фокус для доступности */
 }
 
 @media (max-width: 480px) {
