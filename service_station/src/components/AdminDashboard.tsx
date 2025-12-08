@@ -173,6 +173,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
             >
               Журнал событий
             </button>
+
+            <div className="role-preview">
+              <h3>Просмотр ролей:</h3>
+              <button onClick={() => window.location.hash = '#master'}>Мастер-Приемщик</button>
+              <button onClick={() => window.location.hash = '#diagnostician'}>Диагност</button>
+              <button onClick={() => window.location.hash = '#storekeeper'}>Кладовщик</button>
+              <button onClick={() => window.location.hash = '#worker'}>Работник</button>
+            </div>
           </div>
 
           <div className="main-content">
@@ -400,13 +408,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
               </div>
             </div>
           )}
-        </div>
-        <div className="role-preview">
-          <h3>Просмотр ролей:</h3>
-          <button onClick={() => window.location.hash = '#master'}>Мастер-Приемщик</button>
-          <button onClick={() => window.location.hash = '#diagnostician'}>Диагност</button>
-          <button onClick={() => window.location.hash = '#storekeeper'}>Кладовщик</button>
-          <button onClick={() => window.location.hash = '#worker'}>Работник</button>
         </div>
       </div>
     </div>

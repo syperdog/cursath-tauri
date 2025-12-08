@@ -26,7 +26,17 @@ interface WorkItem {
   checked: boolean;
 }
 
+interface User {
+  id: number;
+  full_name: string;
+  role: string;
+  login: string;
+  status: string;
+  pin_code: string;
+}
+
 const WorkerDashboard: React.FC = () => {
+  const [user, setUser] = useState<User | null>(null);
   const [workerName, setWorkerName] = useState<string>('Worker Name');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [showOrderExecutionModal, setShowOrderExecutionModal] = useState<boolean>(false);
@@ -47,8 +57,35 @@ const WorkerDashboard: React.FC = () => {
 
   // Load worker dashboard data
   useEffect(() => {
-    loadWorkerData();
+    checkSession();
   }, []);
+
+  const checkSession = async () => {
+    try {
+      // Получить токен сессии из localStorage
+      const sessionToken = localStorage.getItem('sessionToken');
+
+      if (sessionToken) {
+        const userData: User | null = await invoke('get_user_session', { sessionToken });
+
+        if (userData && (userData.role === 'Worker' || userData.role === 'Admin')) {
+          setUser(userData);
+          // Установим имя работника из данных пользователя
+          setWorkerName(userData.full_name);
+        } else {
+          // Перенаправить на форму входа, если сессия неактивна или роль не та
+          window.location.hash = '#login';
+        }
+      } else {
+        // Если нет токена сессии, перенаправить на вход
+        window.location.hash = '#login';
+      }
+    } catch (error) {
+      console.error('Error checking session:', error);
+      // Перенаправить на форму входа в случае ошибки
+      window.location.hash = '#login';
+    }
+  };
 
   const updateTime = () => {
     const now = new Date();
@@ -92,10 +129,21 @@ const WorkerDashboard: React.FC = () => {
     <div className="worker-dashboard">
       <header className="dashboard-header">
         <div className="header-info">
-          <h1>🔧 РАБОТНИК: {workerName}</h1>
+          <h1>🔧 РАБОТНИК: {user?.full_name || workerName}</h1>
           <div className="header-time">{currentTime}</div>
         </div>
-        <button className="logout-button" onClick={handleLogout}>✖ ВЫХОД</button>
+        <div className="header-buttons">
+          {user?.role === 'Admin' && (
+            <button
+              className="admin-return-btn"
+              onClick={() => window.location.hash = '#admin'}
+              title="Вернуться в меню администратора"
+            >
+              🏠 Админ-панель
+            </button>
+          )}
+          <button className="logout-button" onClick={handleLogout}>✖ ВЫХОД</button>
+        </div>
       </header>
 
       <main className="dashboard-content">

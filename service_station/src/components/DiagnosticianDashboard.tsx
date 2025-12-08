@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { invoke } from '@tauri-apps/api/core';
 import './DiagnosticianDashboard.css';
 import DiagnosticsModal from './DiagnosticsModal';
 
@@ -10,12 +11,25 @@ type Order = {
   issueDescription: string;
 };
 
+// Тип для пользователя
+interface User {
+  id: number;
+  full_name: string;
+  role: string;
+  login: string;
+  status: string;
+  pin_code: string;
+}
+
 const DiagnosticianDashboard: React.FC = () => {
   // Состояние для списка заказов, ожидающих диагностики
   const [orders, setOrders] = useState<Order[]>([
     { id: 105, carModel: 'BMW X5', licensePlate: '1234 AB-7', issueDescription: 'Стук в подвеске' },
     { id: 108, carModel: 'Audi A6', licensePlate: '5678 CD-7', issueDescription: 'Горит Check Engine' }
   ]);
+
+  // Состояние для пользователя
+  const [user, setUser] = useState<User | null>(null);
 
   // Состояние для выбранного заказа
   const [selectedOrder, setSelectedOrder] = useState<number | null>(null);
@@ -47,6 +61,36 @@ const DiagnosticianDashboard: React.FC = () => {
     setShowDiagnosticsModal(false);
   };
 
+  // Проверка сессии при загрузке компонента
+  React.useEffect(() => {
+    checkSession();
+  }, []);
+
+  const checkSession = async () => {
+    try {
+      // Получить токен сессии из localStorage
+      const sessionToken = localStorage.getItem('sessionToken');
+
+      if (sessionToken) {
+        const userData: User | null = await invoke('get_user_session', { sessionToken });
+
+        if (userData && (userData.role === 'Diagnostician' || userData.role === 'Admin')) {
+          setUser(userData);
+        } else {
+          // Перенаправить на форму входа, если сессия неактивна или роль не та
+          window.location.hash = '#login';
+        }
+      } else {
+        // Если нет токена сессии, перенаправить на вход
+        window.location.hash = '#login';
+      }
+    } catch (error) {
+      console.error('Error checking session:', error);
+      // Перенаправить на форму входа в случае ошибки
+      window.location.hash = '#login';
+    }
+  };
+
   const handleLogout = () => {
     // Сбросить данные сессии
     localStorage.removeItem('sessionToken');
@@ -61,8 +105,19 @@ const DiagnosticianDashboard: React.FC = () => {
   return (
     <div className="dashboard diagnostician-dashboard">
       <div className="dashboard-header">
-        <h1>🔍 ДИАГНОСТ: Иванов И.И.</h1>
-        <button className="exit-button" onClick={handleLogout}>✖ ВЫХОД</button>
+        <h1>🔍 ДИАГНОСТ: {user?.full_name || 'Иванов И.И.'}</h1>
+        <div className="header-buttons">
+          {user?.role === 'Admin' && (
+            <button
+              className="admin-return-btn"
+              onClick={() => window.location.hash = '#admin'}
+              title="Вернуться в меню администратора"
+            >
+              🏠 Админ-панель
+            </button>
+          )}
+          <button className="exit-button" onClick={handleLogout}>✖ ВЫХОД</button>
+        </div>
       </div>
 
       <div className="dashboard-content">

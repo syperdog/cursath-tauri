@@ -39,6 +39,30 @@
   background: #c0392b;
 }
 
+.header-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.admin-return-btn {
+  background: #9b59b6; /* Фиолетовый цвет для отличия от других кнопок */
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 15px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: background 0.3s;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.admin-return-btn:hover {
+  background: #8e44ad;
+}
+
 .search-bar {
   background: white;
   border-radius: 16px;

@@ -348,7 +348,18 @@ const MasterDashboard: React.FC = () => {
     <div className="master-dashboard">
       <header className="dashboard-header">
         <h1>🛠️ {user?.full_name} - Мастер-Приёмщик</h1>
-        <button className="logout-btn" onClick={handleLogout}>✖ ВЫХОД</button>
+        <div className="header-buttons">
+          {user?.role === 'Admin' && (
+            <button
+              className="admin-return-btn"
+              onClick={() => window.location.hash = '#admin'}
+              title="Вернуться в меню администратора"
+            >
+              🏠 Админ-панель
+            </button>
+          )}
+          <button className="logout-btn" onClick={handleLogout}>✖ ВЫХОД</button>
+        </div>
       </header>
 
       <div className="search-bar">

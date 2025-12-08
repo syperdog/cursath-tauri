@@ -59,7 +59,7 @@
 }
 
 .sidebar {
-  flex: 0 0 200px;
+  flex: 0 0 220px; /* Увеличиваем ширину для размещения нового содержимого */
   background: white;
   border-radius: 16px;
   padding: 20px;
@@ -79,15 +79,17 @@
   text-align: left;
   font-size: 16px;
   transition: background 0.3s;
+  color: #2c3e50; /* Установим темный цвет текста для лучшей читаемости */
 }
 
 .sidebar button:hover {
   background: #d5dbdb;
+  color: #2c3e50; /* Сохраняем темный цвет текста при наведении */
 }
 
 .sidebar button.active {
   background: #3498db;
-  color: white;
+  color: white; /* Белый текст на активной кнопке остается для контраста */
 }
 
 .main-content {
@@ -278,36 +280,38 @@
 }
 
 .role-preview {
-  background: white;
-  border-radius: 16px;
-  padding: 20px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-  margin-left: 20px;
-  width: 200px;
+  background: #f8f9fa; /* Легкий фон, соответствующий стилю боковой панели */
+  border-radius: 8px;
+  padding: 15px;
+  margin-top: 20px; /* Отступ сверху от последней кнопки */
+  border: 1px solid #eee; /* Тонкая граница для выделения */
 }
 
 .role-preview h3 {
   margin-top: 0;
+  margin-bottom: 12px;
   color: #2c3e50;
-  font-size: 1.1rem;
+  font-size: 1rem;
   text-align: center;
+  font-weight: 600;
 }
 
 .role-preview button {
   display: block;
   width: 100%;
-  padding: 10px;
+  padding: 8px;
   margin-bottom: 8px;
-  background: #ecf0f1;
-  border: none;
-  border-radius: 8px;
+  background: #e3f2fd; /* Более светлый синий фон для отличия от основных кнопок */
+  border: 1px solid #bbdefb;
+  border-radius: 6px;
   cursor: pointer;
   font-size: 14px;
   transition: background 0.3s;
+  color: #1a237e; /* Темно-синий текст для лучшей читаемости */
 }
 
 .role-preview button:hover {
-  background: #d5dbdb;
+  background: #bbdefb;
 }
 
 /* Модальное окно */
