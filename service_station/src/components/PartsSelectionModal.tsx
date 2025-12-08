@@ -77,36 +77,8 @@ const PartsSelectionModal: React.FC<PartsSelectionModalProps> = ({
     try {
       setLoading(true);
       // В реальном приложении это будет вызовом API для получения предложений по запчастям
-      // Временно возвращаем заглушку
-      const suggestions: PartSuggestion[] = [
-        {
-          id: 1,
-          name: "Рычаг передний левый",
-          brand: "Lemforder",
-          supplier: "Склад СТО",
-          price: 250.00,
-          availability: "В наличии",
-          part_number: "30333 01"
-        },
-        {
-          id: 2,
-          name: "Рычаг передний левый",
-          brand: "Patron",
-          supplier: "Шате-М",
-          price: 120.00,
-          availability: "Завтра",
-          part_number: "PS5005"
-        },
-        {
-          id: 3,
-          name: "Тормозные колодки",
-          brand: "Bosch",
-          supplier: "Склад СТО",
-          price: 180.00,
-          availability: "В наличии",
-          part_number: "0986489524"
-        }
-      ];
+      // При первом открытии список будет пустым
+      const suggestions: PartSuggestion[] = [];
       setPartSuggestions(suggestions);
     } catch (error) {
       console.error('Error loading part suggestions:', error);

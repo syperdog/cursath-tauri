@@ -23,20 +23,7 @@ const DiagnosticsModal: React.FC<Props> = ({
   onDiagnosisComplete 
 }) => {
   // Состояния для списка неисправностей
-  const [faults, setFaults] = useState<Fault[]>([
-    {
-      id: '1',
-      category: 'Подвеска',
-      type: 'Люфт шаровой',
-      comment: 'Передний левый рычаг'
-    },
-    {
-      id: '2',
-      category: 'Тормоза',
-      type: 'Износ колодок',
-      comment: 'Остаток 20%, срочно менять'
-    }
-  ]);
+  const [faults, setFaults] = useState<Fault[]>([]);
   
   // Состояние для управления видимостью модального окна добавления неисправности
   const [showAddFaultModal, setShowAddFaultModal] = useState(false);
