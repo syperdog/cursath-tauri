@@ -59,6 +59,9 @@ const MasterDashboard: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<(Client | Car | Order)[]>([]);
   const [showSearchDropdown, setShowSearchDropdown] = useState(false);
+  const [clientCars, setClientCars] = useState<Car[]>([]);
+  const [showClientCarsModal, setShowClientCarsModal] = useState(false);
+  const [selectedClientForCars, setSelectedClientForCars] = useState<Client | null>(null);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -306,13 +309,23 @@ const MasterDashboard: React.FC = () => {
   };
 
   // Обработчик клика по результату поиска
-  const handleSearchResultClick = (item: Client | Car | Order) => {
+  const handleSearchResultClick = async (item: Client | Car | Order) => {
     setSearchQuery(''); // Clear search query
     setShowSearchDropdown(false); // Hide dropdown
     setSearchResults([]); // Clear results
 
     if ('phone' in item) { // Это клиент
-      handleCreateNewOrder(item as Client, null);
+      // Загрузим автомобили клиента
+      try {
+        const carsForClient = await invoke<Car[]>('get_cars_by_client_id', { clientId: item.id });
+        setClientCars(carsForClient);
+        setSelectedClientForCars(item as Client);
+        setShowClientCarsModal(true);
+      } catch (error) {
+        console.error('Error loading client cars:', error);
+        // Если не удалось загрузить автомобили, открываем заказ с пустым автомобилем
+        handleCreateNewOrder(item as Client, null);
+      }
     } else if ('license_plate' in item) { // Это автомобиль
       // Найдем клиента для этого автомобиля
       const client = clients[(item as Car).client_id] || null;
@@ -717,6 +730,77 @@ const MasterDashboard: React.FC = () => {
             setShowNewCarModal(false);
           }}
         />
+      )}
+
+      {/* Modal for selecting a car for the client */}
+      {showClientCarsModal && selectedClientForCars && (
+        <div className="modal-overlay" onClick={() => setShowClientCarsModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>🚗 Выбор автомобиля для {selectedClientForCars.full_name}</h2>
+              <button className="close-btn" onClick={() => setShowClientCarsModal(false)}>✖ ЗАКРЫТЬ</button>
+            </div>
+
+            <div className="modal-body">
+              {clientCars.length > 0 ? (
+                <div className="client-cars-list">
+                  <p>Выберите автомобиль клиента:</p>
+                  <ul>
+                    {clientCars.map((car) => (
+                      <li
+                        key={car.id}
+                        className="car-item"
+                        onClick={() => {
+                          handleCreateNewOrder(selectedClientForCars, car);
+                          setShowClientCarsModal(false);
+                        }}
+                      >
+                        <div>
+                          <strong>{car.make} {car.model}</strong> | {car.license_plate || 'Нет номера'}
+                        </div>
+                        <div className="car-details">
+                          {car.production_year ? `Год: ${car.production_year}` : ''} |
+                          {car.mileage} км |
+                          {car.vin ? `VIN: ${car.vin}` : 'VIN: не указан'}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : (
+                <div className="no-cars">
+                  <p>У клиента пока нет зарегистрированных автомобилей.</p>
+                  <p>Вы можете добавить автомобиль для клиента.</p>
+                </div>
+              )}
+            </div>
+
+            <div className="modal-actions">
+              {clientCars.length === 0 && (
+                <button
+                  className="secondary-btn"
+                  onClick={() => {
+                    setShowClientCarsModal(false);
+                    // Set the selected client for the new car modal
+                    setSelectedCarForNewOrder(null);
+                    setShowNewCarModal(true);
+                  }}
+                >
+                  ➕ ДОБАВИТЬ АВТОМОБИЛЬ
+                </button>
+              )}
+              <button
+                className="primary-btn"
+                onClick={() => {
+                  handleCreateNewOrder(selectedClientForCars, null);
+                  setShowClientCarsModal(false);
+                }}
+              >
+                🚀 НОВЫЙ ЗАКАЗ БЕЗ АВТОМОБИЛЯ
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       <NewOrderModal

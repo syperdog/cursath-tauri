@@ -385,6 +385,34 @@ async fn search_orders_clients_cars(query: String, state: tauri::State<'_, Datab
 }
 
 #[tauri::command]
+async fn get_cars_by_client_id(client_id: i32, state: tauri::State<'_, Database>) -> Result<Vec<Car>, String> {
+    let query = "SELECT id, client_id, vin, license_plate, make, model, production_year, mileage, last_visit_date::text, created_at::text FROM cars WHERE client_id=$1";
+    let rows = sqlx::query(query)
+        .bind(client_id)
+        .fetch_all(&state.pool)
+        .await
+        .map_err(|e| format!("Database error: {}", e))?;
+
+    let mut cars = Vec::new();
+    for row in rows {
+        cars.push(Car {
+            id: row.get("id"),
+            client_id: row.get("client_id"),
+            vin: row.get("vin"),
+            license_plate: row.get("license_plate"),
+            make: row.get("make"),
+            model: row.get("model"),
+            production_year: row.get("production_year"),
+            mileage: row.get("mileage"),
+            last_visit_date: row.get("last_visit_date"),
+            created_at: row.get("created_at"),
+        });
+    }
+
+    Ok(cars)
+}
+
+#[tauri::command]
 async fn create_order(client_id: i32, car_id: i32, _complaint: Option<String>, _current_mileage: Option<i32>) -> Result<String, String> {
     // In a real application, this would insert a new order into the database
     // For now, returning a success message
@@ -559,6 +587,7 @@ pub fn run() {
             get_orders_for_master,
             get_client_by_id,
             get_car_by_id,
+            get_cars_by_client_id,
             search_orders_clients_cars,
             create_order,
             get_all_users,
