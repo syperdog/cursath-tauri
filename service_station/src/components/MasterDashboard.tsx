@@ -7,6 +7,7 @@ import SearchModal from './SearchModal';
 import NewClientModal from './NewClientModal';
 import NewCarModal from './NewCarModal';
 import AssignWorkersModal from './AssignWorkersModal';
+import NewOrderModal from './NewOrderModal';
 
 interface Order {
   id: number;
@@ -589,6 +590,14 @@ const MasterDashboard: React.FC = () => {
           }}
         />
       )}
+
+      <NewOrderModal
+        isOpen={isNewOrderModalOpen}
+        client={selectedClientForNewOrder}
+        car={selectedCarForNewOrder}
+        onClose={handleNewOrderModalClose}
+        onOrderCreated={handleOrderCreated}
+      />
 
       {showAssignWorkersModal && selectedOrder && (
         <AssignWorkersModal
