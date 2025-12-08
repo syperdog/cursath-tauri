@@ -6,6 +6,7 @@ import MasterDashboard from "./components/MasterDashboard";
 import AdminDashboard from "./components/AdminDashboard";
 import WorkerDashboard from "./components/WorkerDashboard";
 import DiagnosticianDashboard from "./components/DiagnosticianDashboard";
+import StorekeeperDashboard from "./components/StorekeeperDashboard";
 import { User } from "./types/user";
 
 function App() {
@@ -56,7 +57,7 @@ function App() {
       case 'diagnostician':
         return <DiagnosticianDashboard />;
       case 'storekeeper':
-        return <div>Storekeeper Dashboard (Coming Soon)</div>;
+        return <StorekeeperDashboard />;
       case 'worker':
         return <WorkerDashboard />;
       case 'login':

@@ -1,0 +1,128 @@
+/* PartsSelectionModal.css */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 16px;
+  width: 90%;
+  max-width: 1000px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  border-bottom: 1px solid #eee;
+}
+
+.modal-header h2 {
+  margin: 0;
+  color: #2c3e50;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: #7f8c8d;
+}
+
+.close-btn:hover {
+  color: #2c3e50;
+}
+
+.modal-body {
+  padding: 20px;
+}
+
+.diagnostics-section h3,
+.parts-suggestions-section h3 {
+  color: #2c3e50;
+  margin-top: 0;
+}
+
+.diagnostics-section ul {
+  list-style: none;
+  padding-left: 0;
+}
+
+.diagnostics-section li {
+  padding: 5px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.part-brand {
+  font-size: 0.85em;
+  color: #666;
+}
+
+.parts-suggestions-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 15px;
+}
+
+.parts-suggestions-table th,
+.parts-suggestions-table td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid #eee;
+}
+
+.parts-suggestions-table th {
+  background-color: #f8f9fa;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.parts-suggestions-table tbody tr:hover {
+  background-color: #f8f9fa;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: space-between;
+  padding: 20px;
+  border-top: 1px solid #eee;
+}
+
+@media (max-width: 900px) {
+  .modal-content {
+    width: 95%;
+    max-height: 95vh;
+  }
+
+  .parts-suggestions-table {
+    font-size: 0.9em;
+  }
+
+  .parts-suggestions-table th,
+  .parts-suggestions-table td {
+    padding: 8px;
+  }
+
+  .modal-actions {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .modal-actions button {
+    width: 100%;
+  }
+}

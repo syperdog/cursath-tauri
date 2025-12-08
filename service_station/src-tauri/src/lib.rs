@@ -55,6 +55,15 @@ struct Car {
     created_at: String,
 }
 
+#[derive(Serialize, Deserialize, Clone)]
+struct DiagnosticResult {
+    id: i32,
+    order_id: i32,
+    diagnostician_id: i32,
+    description: String,
+    created_at: String,
+}
+
 
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 #[tauri::command]
@@ -413,10 +422,64 @@ async fn get_cars_by_client_id(client_id: i32, state: tauri::State<'_, Database>
 }
 
 #[tauri::command]
+async fn get_orders_for_storekeeper(state: tauri::State<'_, Database>) -> Result<Vec<Order>, String> {
+    // In a real application, this would query the database for orders that need storekeeper attention
+    // For now, returning hardcoded data for testing purposes
+    let query = "SELECT id, client_id, car_id, master_id, status::text, complaint, current_mileage, prepayment::text, total_amount::text, created_at::text, completed_at::text FROM orders WHERE status IN ('Diagnostics', 'Parts_Selection', 'Approval', 'In_Work')";
+    let rows = sqlx::query(query)
+        .fetch_all(&state.pool)
+        .await
+        .map_err(|e| format!("Database error: {}", e))?;
+
+    let mut orders = Vec::new();
+    for row in rows {
+        orders.push(Order {
+            id: row.get("id"),
+            client_id: row.get("client_id"),
+            car_id: row.get("car_id"),
+            master_id: row.get("master_id"),
+            status: row.get("status"),
+            complaint: row.get("complaint"),
+            current_mileage: row.get("current_mileage"),
+            prepayment: row.get("prepayment"),
+            total_amount: row.get("total_amount"),
+            created_at: row.get("created_at"),
+            completed_at: row.get("completed_at"),
+        });
+    }
+
+    Ok(orders)
+}
+
+#[tauri::command]
 async fn create_order(client_id: i32, car_id: i32, _complaint: Option<String>, _current_mileage: Option<i32>) -> Result<String, String> {
     // In a real application, this would insert a new order into the database
     // For now, returning a success message
     Ok(format!("Order created successfully for client {} and car {}", client_id, car_id))
+}
+
+#[tauri::command]
+async fn get_diagnostic_results_by_order_id(order_id: i32, state: tauri::State<'_, Database>) -> Result<Vec<DiagnosticResult>, String> {
+    // Query to get diagnostic results for a specific order
+    let query = "SELECT id, order_id, diagnostician_id, description, created_at::text FROM diagnostic_results WHERE order_id = $1";
+    let rows = sqlx::query(query)
+        .bind(order_id)
+        .fetch_all(&state.pool)
+        .await
+        .map_err(|e| format!("Database error: {}", e))?;
+
+    let mut results = Vec::new();
+    for row in rows {
+        results.push(DiagnosticResult {
+            id: row.get("id"),
+            order_id: row.get("order_id"),
+            diagnostician_id: row.get("diagnostician_id"),
+            description: row.get("description"),
+            created_at: row.get("created_at"),
+        });
+    }
+
+    Ok(results)
 }
 
 // User management
@@ -585,9 +648,11 @@ pub fn run() {
             get_user_session,
             logout_user,
             get_orders_for_master,
+            get_orders_for_storekeeper,
             get_client_by_id,
             get_car_by_id,
             get_cars_by_client_id,
+            get_diagnostic_results_by_order_id,
             search_orders_clients_cars,
             create_order,
             get_all_users,
