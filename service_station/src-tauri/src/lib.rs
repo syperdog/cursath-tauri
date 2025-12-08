@@ -199,122 +199,80 @@ async fn logout_user(session_token: String) -> Result<String, String> {
 
 // Order management
 #[tauri::command]
-async fn get_orders_for_master() -> Result<Vec<Order>, String> {
-    // In a real application, this would query the database for orders
-    // For now, returning hardcoded data for testing purposes
-    Ok(vec![
-        Order {
-            id: 105,
-            client_id: 1,
-            car_id: 1,
-            master_id: Some(1),
-            status: "In_Work".to_string(),
-            complaint: Some("Стук в подвеске".to_string()),
-            current_mileage: Some(155000),
-            prepayment: Some("3000".to_string()),
-            total_amount: Some("9000".to_string()),
-            created_at: "2025-11-25T10:00:00".to_string(),
-            completed_at: None,
-        },
-        Order {
-            id: 106,
-            client_id: 2,
-            car_id: 2,
-            master_id: Some(1),
-            status: "Ready".to_string(),
-            complaint: Some("Проблемы с двигателем".to_string()),
-            current_mileage: Some(145000),
-            prepayment: Some("1000".to_string()),
-            total_amount: Some("3500".to_string()),
-            created_at: "2025-11-26T11:00:00".to_string(),
-            completed_at: None,
-        },
-        Order {
-            id: 107,
-            client_id: 3,
-            car_id: 3,
-            master_id: Some(1),
-            status: "Diagnostics".to_string(),
-            complaint: Some("Замена масла".to_string()),
-            current_mileage: Some(120000),
-            prepayment: None,
-            total_amount: None,
-            created_at: "2025-11-27T12:00:00".to_string(),
-            completed_at: None,
-        },
-    ])
+async fn get_orders_for_master(state: tauri::State<'_, Database>) -> Result<Vec<Order>, String> {
+    // Query all orders for the master from the database
+    let query = "SELECT id, client_id, car_id, master_id, status::text, complaint, current_mileage, prepayment::text, total_amount::text, created_at::text, completed_at::text FROM orders WHERE status != 'Closed' AND status != 'Cancelled' ORDER BY created_at DESC";
+    let rows = sqlx::query(query)
+        .fetch_all(&state.pool)
+        .await
+        .map_err(|e| format!("Database error: {}", e))?;
+
+    let mut orders = Vec::new();
+    for row in rows {
+        orders.push(Order {
+            id: row.get("id"),
+            client_id: row.get("client_id"),
+            car_id: row.get("car_id"),
+            master_id: row.get("master_id"),
+            status: row.get("status"),
+            complaint: row.get("complaint"),
+            current_mileage: row.get("current_mileage"),
+            prepayment: row.get("prepayment"),
+            total_amount: row.get("total_amount"),
+            created_at: row.get("created_at"),
+            completed_at: row.get("completed_at"),
+        });
+    }
+
+    Ok(orders)
 }
 
 #[tauri::command]
-async fn get_client_by_id(client_id: i32) -> Result<Option<Client>, String> {
-    // In a real application, this would query the database
-    match client_id {
-        1 => Ok(Some(Client {
-            id: 1,
-            full_name: "Петров П.П.".to_string(),
-            phone: "+375 (29) 111-22-33".to_string(),
-            address: Some("г. Минск, ул. Ленина, 1".to_string()),
-            created_at: "2024-01-01T00:00:00".to_string(),
-        })),
-        2 => Ok(Some(Client {
-            id: 2,
-            full_name: "Сидоров А.А.".to_string(),
-            phone: "+375 (29) 444-55-66".to_string(),
-            address: Some("г. Минск, ул. Победы, 10".to_string()),
-            created_at: "2024-01-02T00:00:00".to_string(),
-        })),
-        3 => Ok(Some(Client {
-            id: 3,
-            full_name: "Иванов И.И.".to_string(),
-            phone: "+375 (33) 777-88-99".to_string(),
-            address: Some("г. Гомель, ул. Строителей, 5".to_string()),
-            created_at: "2024-01-03T00:00:00".to_string(),
-        })),
-        _ => Ok(None),
+async fn get_client_by_id(client_id: i32, state: tauri::State<'_, Database>) -> Result<Option<Client>, String> {
+    let query = "SELECT id, full_name, phone, address, created_at::text FROM clients WHERE id = $1";
+    let row = sqlx::query(query)
+        .bind(client_id)
+        .fetch_optional(&state.pool)
+        .await
+        .map_err(|e| format!("Database error: {}", e))?;
+
+    if let Some(row) = row {
+        Ok(Some(Client {
+            id: row.get("id"),
+            full_name: row.get("full_name"),
+            phone: row.get("phone"),
+            address: row.get("address"),
+            created_at: row.get("created_at"),
+        }))
+    } else {
+        Ok(None)
     }
 }
 
 #[tauri::command]
-async fn get_car_by_id(car_id: i32) -> Result<Option<Car>, String> {
-    // In a real application, this would query the database
-    match car_id {
-        1 => Ok(Some(Car {
-            id: 1,
-            client_id: 1,
-            vin: Some("WBA1234567890ABCD".to_string()),
-            license_plate: Some("A 123 AA 77".to_string()),
-            make: "Toyota".to_string(),
-            model: "Camry".to_string(),
-            production_year: Some(2015),
-            mileage: 155000,
-            last_visit_date: Some("2025-10-10T00:00:00".to_string()),
-            created_at: "2024-01-01T00:00:00".to_string(),
-        })),
-        2 => Ok(Some(Car {
-            id: 2,
-            client_id: 2,
-            vin: Some("WBA9876543210XYZ".to_string()),
-            license_plate: Some("E 555 KX 99".to_string()),
-            make: "Ford".to_string(),
-            model: "Focus".to_string(),
-            production_year: Some(2018),
-            mileage: 145000,
-            last_visit_date: Some("2025-10-15T00:00:00".to_string()),
-            created_at: "2024-01-02T00:00:00".to_string(),
-        })),
-        3 => Ok(Some(Car {
-            id: 3,
-            client_id: 3,
-            vin: Some("WBY111222333444555".to_string()),
-            license_plate: Some("Т 888 ТТ 77".to_string()),
-            make: "BMW".to_string(),
-            model: "X5".to_string(),
-            production_year: Some(2020),
-            mileage: 120000,
-            last_visit_date: Some("2025-10-20T00:00:00".to_string()),
-            created_at: "2024-01-03T00:00:00".to_string(),
-        })),
-        _ => Ok(None),
+async fn get_car_by_id(car_id: i32, state: tauri::State<'_, Database>) -> Result<Option<Car>, String> {
+    let query = "SELECT id, client_id, vin, license_plate, make, model, production_year, mileage, last_visit_date::text, created_at::text FROM cars WHERE id = $1";
+    let row = sqlx::query(query)
+        .bind(car_id)
+        .fetch_optional(&state.pool)
+        .await
+        .map_err(|e| format!("Database error: {}", e))?;
+
+    if let Some(row) = row {
+        Ok(Some(Car {
+            id: row.get("id"),
+            client_id: row.get("client_id"),
+            vin: row.get("vin"),
+            license_plate: row.get("license_plate"),
+            make: row.get("make"),
+            model: row.get("model"),
+            production_year: row.get("production_year"),
+            mileage: row.get("mileage"),
+            last_visit_date: row.get("last_visit_date"),
+            created_at: row.get("created_at"),
+        }))
+    } else {
+        Ok(None)
     }
 }
 
@@ -452,10 +410,20 @@ async fn get_orders_for_storekeeper(state: tauri::State<'_, Database>) -> Result
 }
 
 #[tauri::command]
-async fn create_order(client_id: i32, car_id: i32, _complaint: Option<String>, _current_mileage: Option<i32>) -> Result<String, String> {
-    // In a real application, this would insert a new order into the database
-    // For now, returning a success message
-    Ok(format!("Order created successfully for client {} and car {}", client_id, car_id))
+async fn create_order(client_id: i32, car_id: i32, complaint: Option<String>, current_mileage: Option<i32>, state: tauri::State<'_, Database>) -> Result<String, String> {
+    // Insert a new order into the database with status 'Diagnostics'
+    let query = "INSERT INTO orders (client_id, car_id, master_id, status, complaint, current_mileage, prepayment, total_amount, created_at) VALUES ($1, $2, NULL, 'Diagnostics', $3, $4, 0, 0, NOW()) RETURNING id";
+    let row = sqlx::query(query)
+        .bind(client_id)
+        .bind(car_id)
+        .bind(&complaint)
+        .bind(current_mileage)
+        .fetch_one(&state.pool)
+        .await
+        .map_err(|e| format!("Database error: {}", e))?;
+
+    let order_id: i32 = row.get("id");
+    Ok(format!("Order created successfully with ID: {}", order_id))
 }
 
 #[tauri::command]

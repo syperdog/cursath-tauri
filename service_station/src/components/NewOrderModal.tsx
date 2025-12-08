@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { invoke } from '@tauri-apps/api/core';
 import './NewOrderModal.css';
 
 interface Client {
@@ -30,39 +31,50 @@ interface NewOrderModalProps {
   onOrderCreated: () => void;
 }
 
-const NewOrderModal: React.FC<NewOrderModalProps> = ({ 
-  isOpen, 
-  client, 
-  car, 
-  onClose, 
-  onOrderCreated 
+const NewOrderModal: React.FC<NewOrderModalProps> = ({
+  isOpen,
+  client,
+  car,
+  onClose,
+  onOrderCreated
 }) => {
   const [mileage, setMileage] = useState(car?.mileage.toString() || '');
   const [complaint, setComplaint] = useState('');
   const [previousMileage, setPreviousMileage] = useState(car?.mileage || 0);
   const [dateError, setDateError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+    setLoading(true);
+
     const newMileage = parseInt(mileage);
     if (isNaN(newMileage) || newMileage < previousMileage) {
       setDateError(`Пробег не может быть меньше предыдущего (${previousMileage} км)`);
+      setLoading(false);
       return;
     }
-    
-    // In a real application, we would send this data to the backend
-    console.log('New order:', { 
-      clientId: client?.id, 
-      carId: car?.id, 
-      mileage: newMileage, 
-      complaint 
-    });
-    
-    onOrderCreated();
-    onClose();
+
+    try {
+      // Send the data to the backend to create the order
+      const result = await invoke<string>('create_order', {
+        clientId: client?.id,
+        carId: car?.id,
+        complaint,
+        currentMileage: newMileage
+      });
+
+      console.log('Order creation result:', result);
+      onOrderCreated();
+      onClose();
+    } catch (error) {
+      console.error('Error creating order:', error);
+      setDateError(`Ошибка при создании заказа: ${(error as Error).message}`);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -133,10 +145,10 @@ const NewOrderModal: React.FC<NewOrderModalProps> = ({
           </div>
 
           <div className="modal-actions">
-            <button type="submit" className="create-btn">
-              🚀 СОЗДАТЬ ЗАКАЗ
+            <button type="submit" className="create-btn" disabled={loading}>
+              {loading ? 'СОЗДАНИЕ...' : '🚀 СОЗДАТЬ ЗАКАЗ'}
             </button>
-            <button type="button" onClick={() => onClose()} className="cancel-btn">
+            <button type="button" onClick={() => onClose()} className="cancel-btn" disabled={loading}>
               ОТМЕНА
             </button>
           </div>
