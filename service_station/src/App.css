@@ -74,6 +74,12 @@ button {
   box-shadow: 0 2px 2px rgba(0, 0, 0, 0.2);
 }
 
+/* Переопределение радиуса для кнопок мастера-приемщика */
+.calendar-header .archive-btn,
+.calendar-header .new-order-btn {
+  border-radius: 2px;
+}
+
 button {
   cursor: pointer;
 }
