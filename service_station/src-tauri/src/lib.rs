@@ -65,6 +65,30 @@ struct OrderDefect {
     is_confirmed: bool,
 }
 
+#[derive(Serialize, Deserialize, Clone)]
+struct OrderWork {
+    id: i32,
+    order_id: i32,
+    service_id: Option<i32>, // Может быть null
+    service_name_snapshot: String,
+    price: f64,
+    worker_id: Option<i32>, // Может быть null
+    status: String, // Статус работы (Pending, In_Progress, Done)
+    is_confirmed: bool, // Подтверждено ли клиентом
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+struct OrderPart {
+    id: i32,
+    order_id: i32,
+    warehouse_item_id: Option<i32>, // Может быть null (если не со склада)
+    part_name_snapshot: String,
+    brand: String,
+    price_per_unit: f64,
+    quantity: i32,
+    is_confirmed: bool, // Подтверждено ли клиентом
+}
+
 
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 #[tauri::command]
@@ -358,6 +382,60 @@ async fn search_orders_clients_cars(query: String, state: tauri::State<'_, Datab
 }
 
 #[tauri::command]
+async fn get_order_works_by_order_id(order_id: i32, state: tauri::State<'_, Database>) -> Result<Vec<OrderWork>, String> {
+    // Запрос для получения работ по ID заказа
+    let query = "SELECT id, order_id, service_id, service_name_snapshot, price, worker_id, status::text as status, is_confirmed FROM order_works WHERE order_id = $1";
+    let rows = sqlx::query(query)
+        .bind(order_id)
+        .fetch_all(&state.pool)
+        .await
+        .map_err(|e| format!("Database error: {}", e))?;
+
+    let mut works = Vec::new();
+    for row in rows {
+        works.push(OrderWork {
+            id: row.get("id"),
+            order_id: row.get("order_id"),
+            service_id: row.get("service_id"),
+            service_name_snapshot: row.get("service_name_snapshot"),
+            price: row.get("price"),
+            worker_id: row.get("worker_id"),
+            status: row.get("status"),
+            is_confirmed: row.get("is_confirmed"),
+        });
+    }
+
+    Ok(works)
+}
+
+#[tauri::command]
+async fn get_order_parts_by_order_id(order_id: i32, state: tauri::State<'_, Database>) -> Result<Vec<OrderPart>, String> {
+    // Запрос для получения запчастей по ID заказа
+    let query = "SELECT id, order_id, warehouse_item_id, part_name_snapshot, brand, price_per_unit, quantity, is_confirmed FROM order_parts WHERE order_id = $1";
+    let rows = sqlx::query(query)
+        .bind(order_id)
+        .fetch_all(&state.pool)
+        .await
+        .map_err(|e| format!("Database error: {}", e))?;
+
+    let mut parts = Vec::new();
+    for row in rows {
+        parts.push(OrderPart {
+            id: row.get("id"),
+            order_id: row.get("order_id"),
+            warehouse_item_id: row.get("warehouse_item_id"),
+            part_name_snapshot: row.get("part_name_snapshot"),
+            brand: row.get("brand"),
+            price_per_unit: row.get("price_per_unit"),
+            quantity: row.get("quantity"),
+            is_confirmed: row.get("is_confirmed"),
+        });
+    }
+
+    Ok(parts)
+}
+
+#[tauri::command]
 async fn get_cars_by_client_id(client_id: i32, state: tauri::State<'_, Database>) -> Result<Vec<Car>, String> {
     let query = "SELECT id, client_id, vin, license_plate, make, model, production_year, mileage, last_visit_date::text, created_at::text FROM cars WHERE client_id=$1";
     let rows = sqlx::query(query)
@@ -455,7 +533,7 @@ async fn get_orders_for_diagnostician(state: tauri::State<'_, Database>) -> Resu
 }
 
 #[tauri::command]
-async fn add_part_to_order(order_id: i32, part_name: String, brand: String, supplier: String, price: f64, availability: String, part_number: String, state: tauri::State<'_, Database>) -> Result<String, String> {
+async fn add_part_to_order(order_id: i32, part_name: String, brand: String, supplier: String, price: f64, _availability: String, _part_number: String, state: tauri::State<'_, Database>) -> Result<String, String> {
     // Добавляем запчасть в таблицу order_parts
     let query = "INSERT INTO order_parts (order_id, part_name_snapshot, brand, supplier, price_per_unit, source_type) VALUES ($1, $2, $3, $4, $5, 'Supplier')";
     sqlx::query(query)
@@ -469,6 +547,47 @@ async fn add_part_to_order(order_id: i32, part_name: String, brand: String, supp
         .map_err(|e| format!("Database error: {}", e))?;
 
     Ok(format!("Part '{}' added to order {}", part_name, order_id))
+}
+
+#[tauri::command]
+async fn confirm_order_parts_and_works(
+    order_id: i32,
+    confirmed_works: Vec<i32>,
+    confirmed_parts: Vec<i32>,
+    state: tauri::State<'_, Database>
+) -> Result<String, String> {
+    // Обновляем статус у работ в заказе
+    for work_id in &confirmed_works {
+        let query = "UPDATE order_works SET is_confirmed = true WHERE id = $1 AND order_id = $2";
+        sqlx::query(query)
+            .bind(work_id)
+            .bind(order_id)
+            .execute(&state.pool)
+            .await
+            .map_err(|e| format!("Database error updating work: {}", e))?;
+    }
+
+    // Обновляем статус у запчастей в заказе
+    for part_id in &confirmed_parts {
+        let query = "UPDATE order_parts SET is_confirmed = true WHERE id = $1 AND order_id = $2";
+        sqlx::query(query)
+            .bind(part_id)
+            .bind(order_id)
+            .execute(&state.pool)
+            .await
+            .map_err(|e| format!("Database error updating part: {}", e))?;
+    }
+
+    // Изменяем статус заказа на "In_Work"
+    let query = "UPDATE orders SET status = $1::order_status WHERE id = $2";
+    sqlx::query(query)
+        .bind("In_Work")
+        .bind(order_id)
+        .execute(&state.pool)
+        .await
+        .map_err(|e| format!("Database error updating order status: {}", e))?;
+
+    Ok(format!("Order {} confirmed with {} works and {} parts", order_id, confirmed_works.len(), confirmed_parts.len()))
 }
 
 #[tauri::command]
@@ -525,7 +644,7 @@ struct Part {
 }
 
 #[tauri::command]
-async fn search_parts_by_vin(vin: String, query: String, state: tauri::State<'_, Database>) -> Result<Vec<Part>, String> {
+async fn search_parts_by_vin(_vin: String, _query: String, _state: tauri::State<'_, Database>) -> Result<Vec<Part>, String> {
     // В реальном приложении поиск будет происходить по внешним API и внутреннему складу
     // Для демонстрации возвращаем фиктивные данные
     let parts = vec![
@@ -817,6 +936,8 @@ pub fn run() {
             get_car_by_id,
             get_cars_by_client_id,
             get_diagnostic_results_by_order_id,
+            get_order_works_by_order_id,
+            get_order_parts_by_order_id,
             search_orders_clients_cars,
             create_order,
             get_all_users,
@@ -827,7 +948,8 @@ pub fn run() {
             save_system_settings,
             get_system_logs,
             search_parts_by_vin,
-            add_part_to_order
+            add_part_to_order,
+            confirm_order_parts_and_works
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

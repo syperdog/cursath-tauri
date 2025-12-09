@@ -2,176 +2,125 @@ import React, { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import './ClientApprovalModal.css';
 
-interface WorkItem {
+interface Work {
   id: number;
-  name: string;
-  description: string;
+  service_id?: number;
+  service_name_snapshot: string;
   price: number;
-  checked: boolean;
-  subItems: WorkItem[];
+  worker_id?: number | null;
+  status: string;
+  is_confirmed: boolean;
+}
+
+interface Part {
+  id: number;
+  warehouse_item_id?: number | null;
+  part_name_snapshot: string;
+  brand: string;
+  price_per_unit: number;
+  quantity: number;
+  is_confirmed: boolean;
+}
+
+interface Defect {
+  id: number;
+  defect_description: string;
+  diagnostician_comment: string | null;
+  is_confirmed: boolean;
+}
+
+interface Order {
+  id: number;
+  complaint: string | null;
+  total_amount: string | null;
 }
 
 interface ClientApprovalModalProps {
   isOpen: boolean;
-  order: any; // Order type
-  client: any; // Client type
+  order: Order;
+  clientName: string;
+  defects: Defect[];
+  works: Work[];
+  parts: Part[];
   onClose: () => void;
-  onConfirm: (selectedItems: WorkItem[]) => void;
+  onApprovalComplete: (confirmedWorks: Work[], confirmedParts: Part[]) => void;
+  onRejectAll: () => void;
 }
 
 const ClientApprovalModal: React.FC<ClientApprovalModalProps> = ({
   isOpen,
   order,
-  client,
+  clientName,
+  defects,
+  works,
+  parts,
   onClose,
-  onConfirm
+  onApprovalComplete,
+  onRejectAll
 }) => {
-  const [workItems, setWorkItems] = useState<WorkItem[]>([]);
-  const [totalPrice, setTotalPrice] = useState<number>(0);
-  const [rejectedTotal, setRejectedTotal] = useState<number>(0);
+  const [localWorks, setLocalWorks] = useState<Work[]>([]);
+  const [localParts, setLocalParts] = useState<Part[]>([]);
+  const [totalAmount, setTotalAmount] = useState<number>(0);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   useEffect(() => {
-    if (isOpen && order) {
-      // В реальной реализации данные загружаются из API
-      // Заглушка для демонстрации структуры
-      const mockWorkItems: WorkItem[] = [
-        {
-          id: 1,
-          name: 'Стук в передней подвеске',
-          description: 'Обнаружен стук в передней подвеске',
-          price: 9000,
-          checked: true,
-          subItems: [
-            { id: 11, name: 'Диагностика ходовой', description: '', price: 1000, checked: true, subItems: [] },
-            { id: 12, name: 'Замена стоек стабилизатора', description: '', price: 3000, checked: true, subItems: [] },
-            { id: 13, name: 'Стойка стабилизатора (Toyota) x2', description: '', price: 5000, checked: true, subItems: [] }
-          ]
-        },
-        {
-          id: 2,
-          name: 'Дополнительные рекомендации',
-          description: 'Рекомендуем также выполнить',
-          price: 15000,
-          checked: false,
-          subItems: [
-            { id: 21, name: 'Замена тормозных дисков', description: '', price: 4000, checked: false, subItems: [] },
-            { id: 22, name: 'Тормозные диски (Brembo) x2', description: '', price: 11000, checked: false, subItems: [] }
-          ]
-        }
-      ];
-      
-      setWorkItems(mockWorkItems);
-      
-      // Рассчитываем начальные суммы
-      const checkedPrice = calculateCheckedPrice(mockWorkItems);
-      const uncheckedPrice = calculateUncheckedPrice(mockWorkItems);
-      setTotalPrice(checkedPrice);
-      setRejectedTotal(uncheckedPrice);
+    // Initialize local state with the incoming data
+    setLocalWorks(works.map(work => ({ ...work })));
+    setLocalParts(parts.map(part => ({ ...part })));
+  }, [works, parts]);
+
+  useEffect(() => {
+    // Calculate the total amount when works or parts change
+    const total = localWorks
+      .filter(work => work.is_confirmed)
+      .reduce((sum, work) => sum + work.price, 0) +
+      localParts
+        .filter(part => part.is_confirmed)
+        .reduce((sum, part) => sum + (part.price_per_unit * part.quantity), 0);
+
+    setTotalAmount(total);
+  }, [localWorks, localParts]);
+
+  const toggleWorkConfirmed = (id: number) => {
+    setLocalWorks(prevWorks =>
+      prevWorks.map(work =>
+        work.id === id ? { ...work, is_confirmed: !work.is_confirmed } : work
+      )
+    );
+  };
+
+  const togglePartConfirmed = (id: number) => {
+    setLocalParts(prevParts =>
+      prevParts.map(part =>
+        part.id === id ? { ...part, is_confirmed: !part.is_confirmed } : part
+      )
+    );
+  };
+
+  const handleApproveSelected = async () => {
+    setIsProcessing(true);
+    try {
+      // Подтверждаем выбранные работы и запчасти
+      const confirmedWorkIds = localWorks.filter(work => work.is_confirmed).map(work => work.id);
+      const confirmedPartIds = localParts.filter(part => part.is_confirmed).map(part => part.id);
+
+      // Вызываем команду подтверждения в Rust
+      await invoke('confirm_order_parts_and_works', {
+        orderId: order.id,
+        confirmedWorks: confirmedWorkIds,
+        confirmedParts: confirmedPartIds
+      });
+
+      // Передаем подтвержденные работы и запчасти наверх
+      const confirmedWorks = localWorks.filter(work => work.is_confirmed);
+      const confirmedParts = localParts.filter(part => part.is_confirmed);
+      onApprovalComplete(confirmedWorks, confirmedParts);
+    } catch (error) {
+      console.error('Error confirming order:', error);
+      alert('Ошибка при подтверждении заказа: ' + error);
+    } finally {
+      setIsProcessing(false);
     }
-  }, [isOpen, order]);
-
-  const calculateCheckedPrice = (items: WorkItem[]): number => {
-    let total = 0;
-    items.forEach(item => {
-      if (item.checked) {
-        if (item.subItems.length > 0) {
-          total += calculateCheckedPrice(item.subItems);
-        } else {
-          total += item.price;
-        }
-      }
-    });
-    return total;
-  };
-
-  const calculateUncheckedPrice = (items: WorkItem[]): number => {
-    let total = 0;
-    items.forEach(item => {
-      if (!item.checked) {
-        if (item.subItems.length > 0) {
-          total += calculateUncheckedPrice(item.subItems);
-        } else {
-          total += item.price;
-        }
-      }
-    });
-    return total;
-  };
-
-  const handleCheckboxChange = (id: number, checked: boolean) => {
-    setWorkItems(prevItems => {
-      const updateChecked = (items: WorkItem[]): WorkItem[] => {
-        return items.map(item => {
-          if (item.id === id) {
-            // Если это родительский элемент, обновляем все дочерние
-            if (item.subItems.length > 0) {
-              return {
-                ...item,
-                checked,
-                subItems: updateChecked(item.subItems)
-              };
-            } else {
-              return { ...item, checked };
-            }
-          } else if (item.subItems.length > 0) {
-            // Рекурсивно обновляем дочерние элементы
-            return {
-              ...item,
-              subItems: updateChecked(item.subItems),
-              checked: item.subItems.every(subItem => 
-                findSubItem(subItem, id) ? checked : subItem.checked
-              )
-            };
-          }
-          return item;
-        });
-      };
-
-      const updatedItems = updateChecked(prevItems);
-      
-      // Рассчитываем новые суммы
-      const checkedPrice = calculateCheckedPrice(updatedItems);
-      const uncheckedPrice = calculateUncheckedPrice(updatedItems);
-      setTotalPrice(checkedPrice);
-      setRejectedTotal(uncheckedPrice);
-      
-      return updatedItems;
-    });
-  };
-
-  const findSubItem = (item: WorkItem, id: number): boolean => {
-    if (item.id === id) return true;
-    for (const subItem of item.subItems) {
-      if (findSubItem(subItem, id)) return true;
-    }
-    return false;
-  };
-
-  const handleConfirm = () => {
-    const selectedItems = workItems.filter(item => item.checked);
-    onConfirm(selectedItems);
-  };
-
-  const handleRejectAll = () => {
-    // Отклоняем все элементы, кроме диагностики
-    setWorkItems(prevItems => {
-      const updatedItems = prevItems.map(item => ({
-        ...item,
-        checked: item.name.toLowerCase().includes('диагностика') ? item.checked : false,
-        subItems: item.subItems.map(subItem => ({
-          ...subItem,
-          checked: subItem.name.toLowerCase().includes('диагностика') ? subItem.checked : false
-        }))
-      }));
-
-      // Рассчитываем новые суммы
-      const checkedPrice = calculateCheckedPrice(updatedItems);
-      const uncheckedPrice = calculateUncheckedPrice(updatedItems);
-      setTotalPrice(checkedPrice);
-      setRejectedTotal(uncheckedPrice);
-
-      return updatedItems;
-    });
   };
 
   if (!isOpen) return null;
@@ -180,93 +129,111 @@ const ClientApprovalModal: React.FC<ClientApprovalModalProps> = ({
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h2>📄 Заказ-наряд #{order?.id || 'N/A'}</h2>
+          <h2>📋 ЗАКАЗ-НАРЯД #{order.id}</h2>
           <button className="close-btn" onClick={onClose}>✖ ОТМЕНА</button>
         </div>
 
         <div className="modal-body">
           <div className="client-info">
-            <p><strong>👤 КЛИЕНТ:</strong> {client?.full_name || 'N/A'}</p>
-            <p><strong>⚠️ СТАТУС:</strong> ⏳ СОГЛАСОВАНИЕ</p>
+            <strong>👤 КЛИЕНТ:</strong> {clientName}
           </div>
 
-          <div className="approval-content">
+          <div className="status-badge">
+            ⚠️ СТАТУС: [ ⏳ СОГЛАСОВАНИЕ ]
+          </div>
+
+          <div className="approval-section">
             <h3>📋 СОГЛАСОВАНИЕ РАБОТ И ЗАПЧАСТЕЙ:</h3>
-            <div className="work-items-list">
-              {workItems.map(item => (
-                <WorkItemComponent
-                  key={item.id}
-                  item={item}
-                  onCheckboxChange={handleCheckboxChange}
-                />
-              ))}
-            </div>
+
+            {defects.length > 0 && (
+              <div className="defect-group">
+                {defects.map(defect => (
+                  <div key={defect.id} className="defect-item">
+                    <div>
+                      <input
+                        type="checkbox"
+                        checked={true}
+                        disabled
+                        title="Диагностика обязательна"
+                      />
+                      {defect.defect_description}
+                    </div>
+                    {defect.diagnostician_comment && (
+                      <div className="defect-comment">
+                        <small>💬 Комментарий диагноста: {defect.diagnostician_comment}</small>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {localWorks.length > 0 && (
+              <div className="works-group">
+                <h4>🔧 РАБОТЫ:</h4>
+                {localWorks.map(work => (
+                  <div key={work.id} className="work-item">
+                    <div>
+                      <input
+                        type="checkbox"
+                        checked={work.is_confirmed}
+                        onChange={() => toggleWorkConfirmed(work.id)}
+                      />
+                      {work.service_name_snapshot}
+                    </div>
+                    <div className="work-price">
+                      {work.price.toFixed(2)} $
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {localParts.length > 0 && (
+              <div className="parts-group">
+                <h4>📦 ЗАПЧАСТИ:</h4>
+                {localParts.map(part => (
+                  <div key={part.id} className="part-item">
+                    <div>
+                      <input
+                        type="checkbox"
+                        checked={part.is_confirmed}
+                        onChange={() => togglePartConfirmed(part.id)}
+                      />
+                      {part.part_name_snapshot} ({part.brand}) x{part.quantity}
+                    </div>
+                    <div className="part-price">
+                      {(part.price_per_unit * part.quantity).toFixed(2)} $
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
         <div className="modal-footer">
-          <div className="total-info">
-            <p><strong>ИТОГО К ОПЛАТЕ:</strong> {totalPrice} $ (Без учета отклоненных: {rejectedTotal} $.)</p>
+          <div className="total-amount">
+            ИТОГО К ОПЛАТЕ: {totalAmount.toFixed(2)} $ (Всего: {(totalAmount + 10000).toFixed(2)} $.)
           </div>
           <div className="modal-actions">
-            <button className="confirm-btn" onClick={handleConfirm}>✅ ПОДТВЕРДИТЬ ВЫБРАННОЕ</button>
-            <button className="reject-btn" onClick={handleRejectAll}>❌ ОТКЛОНИТЬ ВСЁ</button>
+            <button
+              className="approve-btn"
+              onClick={handleApproveSelected}
+              disabled={isProcessing}
+            >
+              {isProcessing ? 'обработка...' : '✅ ПОДТВЕРДИТЬ ВЫБРАННОЕ'}
+            </button>
+            <button
+              className="reject-btn"
+              onClick={onRejectAll}
+              disabled={isProcessing}
+            >
+              ❌ ОТКЛОНИТЬ ВСЁ
+            </button>
           </div>
         </div>
       </div>
-    </div>
-  );
-};
-
-interface WorkItemComponentProps {
-  item: WorkItem;
-  onCheckboxChange: (id: number, checked: boolean) => void;
-}
-
-const WorkItemComponent: React.FC<WorkItemComponentProps> = ({ item, onCheckboxChange }) => {
-  const [expanded, setExpanded] = useState(true);
-
-  const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    onCheckboxChange(item.id, e.target.checked);
-  };
-
-  const hasSubItems = item.subItems.length > 0;
-
-  return (
-    <div className="work-item">
-      <div className="work-item-header">
-        <label className="checkbox-container">
-          <input
-            type="checkbox"
-            checked={item.checked}
-            onChange={handleCheckboxChange}
-          />
-          <span className="checkmark">
-            {item.checked ? 'x' : ''}
-          </span>
-        </label>
-        <span className="work-item-title" onClick={() => hasSubItems && setExpanded(!expanded)}>
-          {hasSubItems ? (expanded ? '[-]' : '[+]') : ''} {item.name} (Всего: {item.price} $)
-        </span>
-      </div>
-      
-      {hasSubItems && expanded && (
-        <div className="work-item-subitems">
-          {item.subItems.map(subItem => (
-            <WorkItemComponent
-              key={subItem.id}
-              item={subItem}
-              onCheckboxChange={onCheckboxChange}
-            />
-          ))}
-        </div>
-      )}
-      
-      {item.description && (
-        <div className="work-item-description">
-          {item.description}
-        </div>
-      )}
     </div>
   );
 };

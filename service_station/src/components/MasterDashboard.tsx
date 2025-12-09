@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { User } from '../types/user';
 import OrderDetailsModal from './OrderDetailsModal';
+import ClientApprovalModal from './ClientApprovalModal';
 import './MasterDashboard.css';
 import NewClientModal from './NewClientModal';
 import NewCarModal from './NewCarModal';
@@ -81,6 +82,10 @@ const MasterDashboard: React.FC = () => {
   const [showNewClientModal, setShowNewClientModal] = useState(false);
   const [showNewCarModal, setShowNewCarModal] = useState(false);
   const [showAssignWorkersModal, setShowAssignWorkersModal] = useState(false);
+  const [showClientApprovalModal, setShowClientApprovalModal] = useState(false);
+  const [orderDefects, setOrderDefects] = useState<any[]>([]);
+  const [orderWorks, setOrderWorks] = useState<any[]>([]);
+  const [orderParts, setOrderParts] = useState<any[]>([]);
 
   useEffect(() => {
     checkSession();
@@ -378,10 +383,54 @@ const MasterDashboard: React.FC = () => {
     }
   };
 
+  // Загрузка неисправностей для заказа
+  const loadOrderDefects = async (orderId: number) => {
+    try {
+      const defects = await invoke('get_diagnostic_results_by_order_id', { orderId });
+      setOrderDefects(defects);
+    } catch (error) {
+      console.error(`Error loading defects for order ${orderId}:`, error);
+      setOrderDefects([]);
+    }
+  };
+
+  // Загрузка работ для заказа
+  const loadOrderWorks = async (orderId: number) => {
+    try {
+      const works = await invoke('get_order_works_by_order_id', { orderId });
+      setOrderWorks(works);
+    } catch (error) {
+      console.error(`Error loading works for order ${orderId}:`, error);
+      setOrderWorks([]);
+    }
+  };
+
+  // Загрузка запчастей для заказа
+  const loadOrderParts = async (orderId: number) => {
+    try {
+      const parts = await invoke('get_order_parts_by_order_id', { orderId });
+      setOrderParts(parts);
+    } catch (error) {
+      console.error(`Error loading parts for order ${orderId}:`, error);
+      setOrderParts([]);
+    }
+  };
+
   // Обработчик клика по строке заказа
-  const handleOrderClick = (order: Order) => {
+  const handleOrderClick = async (order: Order) => {
     setSelectedOrder(order);
-    setIsModalOpen(true);
+
+    if (order.status === 'Approval') {
+      // Загружаем данные для модального окна согласования
+      await Promise.all([
+        loadOrderDefects(order.id),
+        loadOrderWorks(order.id),
+        loadOrderParts(order.id)
+      ]);
+      setShowClientApprovalModal(true);
+    } else {
+      setIsModalOpen(true);
+    }
   };
 
   // Обработчик открытия модального окна для создания нового заказа
@@ -702,8 +751,42 @@ const MasterDashboard: React.FC = () => {
           order={selectedOrder}
           client={clients[selectedOrder.client_id] || null}
           car={cars[selectedOrder.car_id] || null}
-          isOpen={isModalOpen}
+          isOpen={isModalOpen && selectedOrder.status !== 'Approval'}
           onClose={() => setIsModalOpen(false)}
+        />
+      )}
+
+      {selectedOrder && showClientApprovalModal && (
+        <ClientApprovalModal
+          isOpen={showClientApprovalModal}
+          order={selectedOrder}
+          clientName={clients[selectedOrder.client_id]?.full_name || 'Клиент'}
+          defects={orderDefects}
+          works={orderWorks}
+          parts={orderParts}
+          onClose={() => setShowClientApprovalModal(false)}
+          onApprovalComplete={(confirmedWorks, confirmedParts) => {
+            console.log('Confirmed works:', confirmedWorks);
+            console.log('Confirmed parts:', confirmedParts);
+            // Обновляем статус заказа или перезагружаем данные
+            setShowClientApprovalModal(false);
+            loadOrders(); // Перезагружаем список заказов
+          }}
+          onRejectAll={async () => {
+            // Обработка отказа от всего - изменяем статус заказа на "Closed"
+            // В реальной системе, возможно, нужно будет учесть оплату за диагностику
+            try {
+              await invoke('update_order_status', {
+                orderId: selectedOrder.id,
+                newStatus: 'Closed'
+              });
+              console.log('Order rejected by client and status updated to Closed');
+              setShowClientApprovalModal(false);
+              loadOrders(); // Перезагружаем список заказов
+            } catch (error) {
+              console.error('Error rejecting order:', error);
+            }
+          }}
         />
       )}
 
