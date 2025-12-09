@@ -29,12 +29,13 @@ interface Car {
   created_at: string;
 }
 
-interface DiagnosticResult {
+interface OrderDefect {
   id: number;
   order_id: number;
   diagnostician_id: number;
-  description: string;
-  created_at: string;
+  defect_description: string;
+  diagnostician_comment: string | null;
+  is_confirmed: boolean;
 }
 
 interface PartSuggestion {
@@ -51,7 +52,7 @@ interface PartsSelectionModalProps {
   isOpen: boolean;
   order: Order;
   car: Car | null;
-  diagnostics: DiagnosticResult[];
+  diagnostics: OrderDefect[];
   onClose: () => void;
   onSave: (partSuggestions: PartSuggestion[]) => void;
 }
@@ -115,7 +116,7 @@ const PartsSelectionModal: React.FC<PartsSelectionModalProps> = ({
             <h3>НЕИСПРАВНОСТИ (От Диагноста):</h3>
             <ul>
               {diagnostics.map(diag => (
-                <li key={diag.id}>{diag.description}</li>
+                <li key={diag.id}>{diag.defect_description}</li>
               ))}
             </ul>
           </div>

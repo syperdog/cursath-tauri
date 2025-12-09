@@ -41,12 +41,13 @@ interface Car {
   created_at: string;
 }
 
-interface DiagnosticResult {
+interface OrderDefect {
   id: number;
   order_id: number;
   diagnostician_id: number;
-  description: string;
-  created_at: string;
+  defect_description: string;
+  diagnostician_comment: string | null;
+  is_confirmed: boolean;
 }
 
 interface PartSuggestion {
@@ -66,7 +67,7 @@ const StorekeeperDashboard: React.FC = () => {
   const [cars, setCars] = useState<Record<number, Car>>({});
   const [activeTab, setActiveTab] = useState<'selection' | 'issuance'>('selection');
   const [loading, setLoading] = useState(true);
-  const [diagnosticResults, setDiagnosticResults] = useState<Record<number, DiagnosticResult[]>>({});
+  const [orderDefects, setOrderDefects] = useState<Record<number, OrderDefect[]>>({});
 
   // Modal states
   const [showPartsSelectionModal, setShowPartsSelectionModal] = useState(false);
@@ -148,8 +149,8 @@ const StorekeeperDashboard: React.FC = () => {
       // Загрузим результаты диагностики
       for (const order of ordersData) {
         try {
-          const results = await invoke<DiagnosticResult[]>('get_diagnostic_results_by_order_id', { orderId: order.id });
-          setDiagnosticResults(prev => ({ ...prev, [order.id]: results }));
+          const results = await invoke<OrderDefect[]>('get_diagnostic_results_by_order_id', { orderId: order.id });
+          setOrderDefects(prev => ({ ...prev, [order.id]: results }));
         } catch (error) {
           console.error(`Error loading diagnostic results for order ${order.id}:`, error);
         }
@@ -314,7 +315,7 @@ const StorekeeperDashboard: React.FC = () => {
                     .map(order => {
                       const client = clients[order.client_id];
                       const car = cars[order.car_id];
-                      const diagnostics = diagnosticResults[order.id] || [];
+                      const diagnostics = orderDefects[order.id] || [];
 
                       return (
                         <tr key={order.id}>
@@ -329,7 +330,7 @@ const StorekeeperDashboard: React.FC = () => {
                             {diagnostics.length > 0 ? 'Диагност' : 'Нет данных'}
                           </td>
                           <td>
-                            {diagnostics.map(d => d.description).join(', ') || 'Нет данных'}
+                            {diagnostics.map(d => d.defect_description).join(', ') || 'Нет данных'}
                           </td>
                           <td>
                             <button
@@ -413,7 +414,7 @@ const StorekeeperDashboard: React.FC = () => {
           isOpen={showPartsSelectionModal}
           order={selectedOrderForParts}
           car={cars[selectedOrderForParts.car_id] || null}
-          diagnostics={diagnosticResults[selectedOrderForParts.id] || []}
+          diagnostics={orderDefects[selectedOrderForParts.id] || []}
           onClose={() => {
             setShowPartsSelectionModal(false);
             setSelectedOrderForParts(null);

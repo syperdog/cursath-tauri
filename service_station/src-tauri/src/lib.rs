@@ -56,12 +56,13 @@ struct Car {
 }
 
 #[derive(Serialize, Deserialize, Clone)]
-struct DiagnosticResult {
+struct OrderDefect {
     id: i32,
     order_id: i32,
     diagnostician_id: i32,
-    description: String,
-    created_at: String,
+    defect_description: String,
+    diagnostician_comment: Option<String>, // Может быть пустым
+    is_confirmed: bool,
 }
 
 
@@ -471,9 +472,9 @@ async fn create_order(client_id: i32, car_id: i32, complaint: Option<String>, cu
 }
 
 #[tauri::command]
-async fn get_diagnostic_results_by_order_id(order_id: i32, state: tauri::State<'_, Database>) -> Result<Vec<DiagnosticResult>, String> {
-    // Query to get diagnostic results for a specific order
-    let query = "SELECT id, order_id, diagnostician_id, description, created_at::text FROM diagnostic_results WHERE order_id = $1";
+async fn get_diagnostic_results_by_order_id(order_id: i32, state: tauri::State<'_, Database>) -> Result<Vec<OrderDefect>, String> {
+    // Query to get diagnostic results for a specific order from the correct table
+    let query = "SELECT id, order_id, diagnostician_id, defect_description, diagnostician_comment, is_confirmed FROM order_defects WHERE order_id = $1";
     let rows = sqlx::query(query)
         .bind(order_id)
         .fetch_all(&state.pool)
@@ -482,12 +483,13 @@ async fn get_diagnostic_results_by_order_id(order_id: i32, state: tauri::State<'
 
     let mut results = Vec::new();
     for row in rows {
-        results.push(DiagnosticResult {
+        results.push(OrderDefect {
             id: row.get("id"),
             order_id: row.get("order_id"),
             diagnostician_id: row.get("diagnostician_id"),
-            description: row.get("description"),
-            created_at: row.get("created_at"),
+            defect_description: row.get("defect_description"),
+            diagnostician_comment: row.get("diagnostician_comment"),
+            is_confirmed: row.get("is_confirmed"),
         });
     }
 
