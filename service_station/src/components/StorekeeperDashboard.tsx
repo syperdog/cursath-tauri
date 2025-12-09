@@ -184,8 +184,7 @@ const StorekeeperDashboard: React.FC = () => {
     if (activeTab === 'selection') {
       // Заказы, требующие подбора запчастей (после диагностики)
       return orders.filter(order =>
-        order.status === 'Parts_Selection' ||
-        order.status === 'Approval'
+        order.status === 'Parts_Selection'
       );
     } else {
       // Заказы, готовые к выдаче в цех (после согласования)
@@ -218,9 +217,40 @@ const StorekeeperDashboard: React.FC = () => {
     setShowPartsSelectionModal(true);
   };
 
-  const handlePartsSelectionSave = (selectedParts: PartSuggestion[]) => {
+  const handlePartsSelectionSave = async (selectedParts: PartSuggestion[]) => {
     console.log('Selected parts for order:', selectedOrderForParts?.id, selectedParts);
-    // В реальном приложении сохраняем выбранные запчасти в базу
+
+    if (selectedOrderForParts) {
+      try {
+        // Сохраняем выбранные запчасти в заказ
+        for (const part of selectedParts) {
+          // В реальном приложении здесь будет вызов API для сохранения запчасти в заказ
+          await invoke('add_part_to_order', {
+            orderId: selectedOrderForParts.id,
+            partName: part.name,
+            brand: part.brand,
+            supplier: part.supplier,
+            price: part.price,
+            availability: part.availability,
+            partNumber: part.part_number
+          });
+        }
+
+        // Изменяем статус заказа на "Approval"
+        await invoke('update_order_status', {
+          orderId: selectedOrderForParts.id,
+          newStatus: 'Approval'
+        });
+
+        console.log(`Order ${selectedOrderForParts.id} status updated to Approval and parts added`);
+
+        // Обновляем список заказов
+        loadOrders();
+      } catch (error) {
+        console.error('Error saving parts or updating order status:', error);
+      }
+    }
+
     setShowPartsSelectionModal(false);
     setSelectedOrderForParts(null);
   };
@@ -264,8 +294,7 @@ const StorekeeperDashboard: React.FC = () => {
           >
             🔍 ПОДБОР ({filteredOrders.filter(o =>
               o.status === 'Diagnostics' ||
-              o.status === 'Parts_Selection' ||
-              o.status === 'Approval'
+              o.status === 'Parts_Selection'
             ).length})
           </button>
           <button
@@ -292,8 +321,7 @@ const StorekeeperDashboard: React.FC = () => {
               <p>Загрузка заказов...</p>
             ) : filteredOrders.filter(o =>
               o.status === 'Diagnostics' ||
-              o.status === 'Parts_Selection' ||
-              o.status === 'Approval'
+              o.status === 'Parts_Selection'
             ).length > 0 ? (
               <table className="orders-table">
                 <thead>
@@ -309,8 +337,7 @@ const StorekeeperDashboard: React.FC = () => {
                   {filteredOrders
                     .filter(o =>
                       o.status === 'Diagnostics' ||
-                      o.status === 'Parts_Selection' ||
-                      o.status === 'Approval'
+                      o.status === 'Parts_Selection'
                     )
                     .map(order => {
                       const client = clients[order.client_id];

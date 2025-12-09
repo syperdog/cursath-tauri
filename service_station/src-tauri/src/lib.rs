@@ -455,6 +455,23 @@ async fn get_orders_for_diagnostician(state: tauri::State<'_, Database>) -> Resu
 }
 
 #[tauri::command]
+async fn add_part_to_order(order_id: i32, part_name: String, brand: String, supplier: String, price: f64, availability: String, part_number: String, state: tauri::State<'_, Database>) -> Result<String, String> {
+    // Добавляем запчасть в таблицу order_parts
+    let query = "INSERT INTO order_parts (order_id, part_name_snapshot, brand, supplier, price_per_unit, source_type) VALUES ($1, $2, $3, $4, $5, 'Supplier')";
+    sqlx::query(query)
+        .bind(order_id)
+        .bind(&part_name)
+        .bind(&brand)
+        .bind(&supplier)
+        .bind(price)
+        .execute(&state.pool)
+        .await
+        .map_err(|e| format!("Database error: {}", e))?;
+
+    Ok(format!("Part '{}' added to order {}", part_name, order_id))
+}
+
+#[tauri::command]
 async fn create_order(client_id: i32, car_id: i32, complaint: Option<String>, current_mileage: Option<i32>, state: tauri::State<'_, Database>) -> Result<String, String> {
     // Insert a new order into the database with status 'Diagnostics'
     let query = "INSERT INTO orders (client_id, car_id, master_id, status, complaint, current_mileage, prepayment, total_amount, created_at) VALUES ($1, $2, NULL, 'Diagnostics', $3, $4, 0, 0, NOW()) RETURNING id";
@@ -494,6 +511,63 @@ async fn get_diagnostic_results_by_order_id(order_id: i32, state: tauri::State<'
     }
 
     Ok(results)
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+struct Part {
+    id: i32,
+    name: String,
+    brand: String,
+    supplier: String,
+    article: String,
+    price: f64,
+    availability: String, // Срок поставки
+}
+
+#[tauri::command]
+async fn search_parts_by_vin(vin: String, query: String, state: tauri::State<'_, Database>) -> Result<Vec<Part>, String> {
+    // В реальном приложении поиск будет происходить по внешним API и внутреннему складу
+    // Для демонстрации возвращаем фиктивные данные
+    let parts = vec![
+        Part {
+            id: 1,
+            name: "Рычаг передний левый".to_string(),
+            brand: "Lemforder".to_string(),
+            supplier: "Склад СТО".to_string(),
+            article: "30333 01".to_string(),
+            price: 250.00,
+            availability: "В наличии".to_string(),
+        },
+        Part {
+            id: 2,
+            name: "Рычаг передний левый".to_string(),
+            brand: "TRW".to_string(),
+            supplier: "Армтек".to_string(),
+            article: "JTC1001".to_string(),
+            price: 240.00,
+            availability: "1 дн.".to_string(),
+        },
+        Part {
+            id: 3,
+            name: "Рычаг передний левый".to_string(),
+            brand: "Patron".to_string(),
+            supplier: "Шате-М".to_string(),
+            article: "PS5005".to_string(),
+            price: 120.00,
+            availability: "1 дн.".to_string(),
+        },
+        Part {
+            id: 4,
+            name: "Рычаг передний левый".to_string(),
+            brand: "Stellox".to_string(),
+            supplier: "Мотекс".to_string(),
+            article: "57-0001".to_string(),
+            price: 110.00,
+            availability: "2 дн.".to_string(),
+        },
+    ];
+
+    Ok(parts)
 }
 
 // User management
@@ -751,7 +825,9 @@ pub fn run() {
             delete_user,
             get_system_settings,
             save_system_settings,
-            get_system_logs
+            get_system_logs,
+            search_parts_by_vin,
+            add_part_to_order
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

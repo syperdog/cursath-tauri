@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import './PartsSelectionModal.css';
+import PartsSearchModal from './PartsSearchModal';
 
 interface Order {
   id: number;
@@ -46,6 +47,7 @@ interface PartSuggestion {
   price: number;
   availability: string;
   part_number: string;
+  selected?: boolean;
 }
 
 interface PartsSelectionModalProps {
@@ -57,16 +59,17 @@ interface PartsSelectionModalProps {
   onSave: (partSuggestions: PartSuggestion[]) => void;
 }
 
-const PartsSelectionModal: React.FC<PartsSelectionModalProps> = ({ 
-  isOpen, 
-  order, 
-  car, 
-  diagnostics, 
-  onClose, 
-  onSave 
+const PartsSelectionModal: React.FC<PartsSelectionModalProps> = ({
+  isOpen,
+  order,
+  car,
+  diagnostics,
+  onClose,
+  onSave
 }) => {
   const [partSuggestions, setPartSuggestions] = useState<PartSuggestion[]>([]);
   const [loading, setLoading] = useState(false);
+  const [showPartsSearchModal, setShowPartsSearchModal] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -89,16 +92,35 @@ const PartsSelectionModal: React.FC<PartsSelectionModalProps> = ({
   };
 
   const handlePartToggle = (id: number) => {
-    setPartSuggestions(prev => 
-      prev.map(part => 
+    setPartSuggestions(prev =>
+      prev.map(part =>
         part.id === id ? { ...part, selected: !part.selected } : part
       )
     );
   };
 
+  const handleAddSelectedParts = (parts: any[]) => {
+    const newParts = parts.map(part => ({
+      id: part.id,
+      name: part.name,
+      brand: part.brand,
+      supplier: part.supplier,
+      price: part.price,
+      availability: part.availability,
+      part_number: part.article,
+      selected: true
+    }));
+
+    setPartSuggestions(prev => [...prev, ...newParts]);
+  };
+
   const handleSave = () => {
     const selectedParts = partSuggestions.filter(part => part.selected);
     onSave(selectedParts);
+  };
+
+  const handleRemovePart = (id: number) => {
+    setPartSuggestions(prev => prev.filter(part => part.id !== id));
   };
 
   if (!isOpen) return null;
@@ -125,7 +147,7 @@ const PartsSelectionModal: React.FC<PartsSelectionModalProps> = ({
             <h3>ПРЕДЛОЖЕНИЕ ПО ЗАПЧАСТЯМ (Для согласования):</h3>
             {loading ? (
               <p>Загрузка предложений по запчастям...</p>
-            ) : (
+            ) : partSuggestions.length > 0 ? (
               <table className="parts-suggestions-table">
                 <thead>
                   <tr>
@@ -135,6 +157,7 @@ const PartsSelectionModal: React.FC<PartsSelectionModalProps> = ({
                     <th>Срок</th>
                     <th>Артикул</th>
                     <th>Выбрать</th>
+                    <th>Действия</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -155,22 +178,44 @@ const PartsSelectionModal: React.FC<PartsSelectionModalProps> = ({
                           onChange={() => handlePartToggle(part.id)}
                         />
                       </td>
+                      <td>
+                        <button
+                          className="remove-part-btn"
+                          onClick={() => handleRemovePart(part.id)}
+                        >
+                          УДАЛИТЬ
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
+            ) : (
+              <p>Нет добавленных запчастей. Нажмите "ПОИСК И ДОБАВЛЕНИЕ" для поиска запчастей.</p>
             )}
           </div>
         </div>
 
         <div className="modal-actions">
-          <button className="secondary-btn" onClick={() => {}}>
+          <button
+            className="secondary-btn"
+            onClick={() => setShowPartsSearchModal(true)}
+          >
             ➕ ПОИСК И ДОБАВЛЕНИЕ
           </button>
           <button className="primary-btn" onClick={handleSave}>
             💾 ОТПРАВИТЬ МАСТЕРУ
           </button>
         </div>
+
+        {showPartsSearchModal && car && (
+          <PartsSearchModal
+            isOpen={showPartsSearchModal}
+            vin={car.vin || ''}
+            onClose={() => setShowPartsSearchModal(false)}
+            onAddSelectedParts={handleAddSelectedParts}
+          />
+        )}
       </div>
     </div>
   );

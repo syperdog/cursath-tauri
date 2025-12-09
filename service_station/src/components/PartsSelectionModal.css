@@ -1,4 +1,154 @@
 /* PartsSelectionModal.css */
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background-color: white;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 1000px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  border-bottom: 1px solid #e0e0e0;
+  background-color: #f5f5f5;
+  border-radius: 8px 8px 0 0;
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 1.2em;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 1.2em;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+
+.modal-body {
+  padding: 16px;
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.diagnostics-section {
+  margin-bottom: 20px;
+}
+
+.diagnostics-section h3 {
+  margin-top: 0;
+  margin-bottom: 10px;
+}
+
+.diagnostics-section ul {
+  list-style: none;
+  padding: 0;
+}
+
+.diagnostics-section li {
+  padding: 4px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.parts-suggestions-section {
+  flex-grow: 1;
+}
+
+.parts-suggestions-section h3 {
+  margin-top: 0;
+  margin-bottom: 12px;
+}
+
+.parts-suggestions-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 8px;
+}
+
+.parts-suggestions-table th, .parts-suggestions-table td {
+  padding: 8px;
+  text-align: left;
+  border-bottom: 1px solid #ddd;
+}
+
+.parts-suggestions-table th {
+  background-color: #f2f2f2;
+  font-weight: bold;
+}
+
+.part-brand {
+  font-style: italic;
+  color: #666;
+}
+
+.modal-actions {
+  padding: 16px;
+  border-top: 1px solid #e0e0e0;
+  display: flex;
+  justify-content: flex-end;
+  background-color: #f9f9f9;
+  border-radius: 0 0 8px 8px;
+}
+
+.primary-btn {
+  background-color: #2196F3;
+  color: white;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1em;
+}
+
+.primary-btn:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+}
+
+.secondary-btn {
+  background-color: #f0f0f0;
+  color: #333;
+  border: 1px solid #ccc;
+  padding: 10px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1em;
+  margin-right: 8px;
+}
+
+.remove-part-btn {
+  background-color: #f44336;
+  color: white;
+  border: none;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.8em;
+}
 .modal-overlay {
   position: fixed;
   top: 0;
