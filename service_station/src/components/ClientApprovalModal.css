@@ -1,0 +1,196 @@
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background-color: white;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 800px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.close-btn {
+  background-color: #f44336;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+.modal-header .close-btn {
+  padding: 4px 8px;
+  font-size: 0.9rem;
+}
+
+.modal-body {
+  padding: 24px;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.client-info {
+  margin-bottom: 20px;
+}
+
+.client-info p {
+  margin: 5px 0;
+}
+
+.approval-content h3 {
+  margin-top: 0;
+  margin-bottom: 15px;
+}
+
+.work-items-list {
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  padding: 10px;
+  margin-bottom: 20px;
+}
+
+.work-item {
+  margin-bottom: 10px;
+  padding: 10px;
+  border: 1px solid #f0f0f0;
+  border-radius: 4px;
+}
+
+.work-item-header {
+  display: flex;
+  align-items: center;
+}
+
+.checkbox-container {
+  display: inline-block;
+  position: relative;
+  margin-right: 10px;
+}
+
+.checkbox-container input {
+  opacity: 0;
+  position: absolute;
+  cursor: pointer;
+  height: 0;
+  width: 0;
+}
+
+.checkmark {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 20px;
+  width: 20px;
+  background-color: #eee;
+  border: 1px solid #ccc;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.checkbox-container:hover input ~ .checkmark {
+  background-color: #ccc;
+}
+
+.checkbox-container input:checked ~ .checkmark {
+  background-color: #2196F3;
+  color: white;
+}
+
+.work-item-title {
+  cursor: pointer;
+  flex: 1;
+}
+
+.work-item-subitems {
+  margin-left: 30px;
+  margin-top: 10px;
+  padding-left: 15px;
+  border-left: 1px dashed #ccc;
+}
+
+.work-item-description {
+  margin-top: 5px;
+  padding: 5px;
+  background-color: #f9f9f9;
+  font-size: 0.9em;
+  color: #666;
+}
+
+.total-info {
+  margin-bottom: 15px;
+  text-align: center;
+  font-weight: bold;
+}
+
+.modal-footer {
+  padding: 16px 24px;
+  border-top: 1px solid #e0e0e0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.confirm-btn, .reject-btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+  margin: 0 5px;
+}
+
+.confirm-btn {
+  background-color: #4CAF50;
+  color: white;
+}
+
+.reject-btn {
+  background-color: #f44336;
+  color: white;
+}
+
+.confirm-btn:hover {
+  background-color: #45a049;
+}
+
+.reject-btn:hover {
+  background-color: #da190b;
+}

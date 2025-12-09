@@ -224,6 +224,11 @@ async fn get_orders_for_master(state: tauri::State<'_, Database>) -> Result<Vec<
         });
     }
 
+    println!("Fetched {} orders for diagnostician", orders.len());
+    for order in &orders {
+        println!("Order {} status: {}", order.id, order.status);
+    }
+
     Ok(orders)
 }
 
@@ -383,7 +388,7 @@ async fn get_cars_by_client_id(client_id: i32, state: tauri::State<'_, Database>
 async fn get_orders_for_storekeeper(state: tauri::State<'_, Database>) -> Result<Vec<Order>, String> {
     // In a real application, this would query the database for orders that need storekeeper attention
     // For now, returning hardcoded data for testing purposes
-    let query = "SELECT id, client_id, car_id, master_id, status::text, complaint, current_mileage, prepayment::text, total_amount::text, created_at::text, completed_at::text FROM orders WHERE status IN ('Diagnostics', 'Parts_Selection', 'Approval', 'In_Work')";
+    let query = "SELECT id, client_id, car_id, master_id, status::text, complaint, current_mileage, prepayment::text, total_amount::text, created_at::text, completed_at::text FROM orders WHERE status IN ('Parts_Selection', 'Approval', 'In_Work')";
     let rows = sqlx::query(query)
         .fetch_all(&state.pool)
         .await
@@ -404,6 +409,45 @@ async fn get_orders_for_storekeeper(state: tauri::State<'_, Database>) -> Result
             created_at: row.get("created_at"),
             completed_at: row.get("completed_at"),
         });
+    }
+
+    println!("Fetched {} orders for storekeeper", orders.len());
+    for order in &orders {
+        println!("Order {} status: {}", order.id, order.status);
+    }
+
+    Ok(orders)
+}
+
+#[tauri::command]
+async fn get_orders_for_diagnostician(state: tauri::State<'_, Database>) -> Result<Vec<Order>, String> {
+    // Query to get orders that need diagnostics from the database
+    let query = "SELECT id, client_id, car_id, master_id, status::text, complaint, current_mileage, prepayment::text, total_amount::text, created_at::text, completed_at::text FROM orders WHERE status = 'Diagnostics'";
+    let rows = sqlx::query(query)
+        .fetch_all(&state.pool)
+        .await
+        .map_err(|e| format!("Database error: {}", e))?;
+
+    let mut orders = Vec::new();
+    for row in rows {
+        orders.push(Order {
+            id: row.get("id"),
+            client_id: row.get("client_id"),
+            car_id: row.get("car_id"),
+            master_id: row.get("master_id"),
+            status: row.get("status"),
+            complaint: row.get("complaint"),
+            current_mileage: row.get("current_mileage"),
+            prepayment: row.get("prepayment"),
+            total_amount: row.get("total_amount"),
+            created_at: row.get("created_at"),
+            completed_at: row.get("completed_at"),
+        });
+    }
+
+    println!("Fetched {} orders for diagnostician", orders.len());
+    for order in &orders {
+        println!("Order {} status: {}", order.id, order.status);
     }
 
     Ok(orders)
@@ -559,6 +603,79 @@ async fn delete_user(user_id: i32, state: tauri::State<'_, Database>) -> Result<
     Ok("User deleted successfully".to_string())
 }
 
+#[tauri::command]
+async fn save_diagnostic_results(order_id: i32, diagnostician_id: i32, defects: Vec<String>, state: tauri::State<'_, Database>) -> Result<String, String> {
+    let defects_count = defects.len();
+    for defect_description in &defects {
+        let query = "INSERT INTO order_defects (order_id, diagnostician_id, defect_description, diagnostician_comment, is_confirmed) VALUES ($1, $2, $3, $4, $5)";
+        sqlx::query(query)
+            .bind(order_id)
+            .bind(diagnostician_id)
+            .bind(defect_description)
+            .bind("") // diagnostician_comment пока пустой
+            .bind(false) // is_confirmed пока false
+            .execute(&state.pool)
+            .await
+            .map_err(|e| format!("Database error: {}", e))?;
+    }
+    Ok(format!("{} diagnostic results saved for order {}", defects_count, order_id))
+}
+
+#[tauri::command]
+async fn update_order_status(order_id: i32, new_status: String, state: tauri::State<'_, Database>) -> Result<String, String> {
+    println!("Updating order {} status to {}", order_id, new_status);
+
+    // Проверим, существует ли заказ с указанным ID
+    let check_query = "SELECT status::text FROM orders WHERE id = $1";
+    let row = sqlx::query(check_query)
+        .bind(order_id)
+        .fetch_optional(&state.pool)
+        .await
+        .map_err(|e| format!("Database check error: {}", e))?;
+
+    match row {
+        Some(row) => {
+            let current_status: String = row.get("status");
+            println!("Current status of order {}: {}", order_id, current_status);
+        },
+        None => {
+            return Err(format!("Order {} not found", order_id));
+        }
+    }
+
+    // Update the order status in the database
+    println!("About to execute update query with status: {} for order: {}", new_status, order_id);
+    let query = "UPDATE orders SET status = $1::order_status WHERE id = $2";
+    let result = sqlx::query(query)
+        .bind(&new_status)
+        .bind(order_id)
+        .execute(&state.pool)
+        .await;
+
+    match result {
+        Ok(updated) => {
+            println!("Order {} status updated to {}, rows affected: {}", order_id, new_status, updated.rows_affected());
+        },
+        Err(e) => {
+            println!("Error during update: {}", e);
+            return Err(format!("Database error: {}", e));
+        }
+    }
+
+    // Проверим, действительно ли статус изменился
+    let verify_query = "SELECT status::text FROM orders WHERE id = $1";
+    let verify_row = sqlx::query(verify_query)
+        .bind(order_id)
+        .fetch_one(&state.pool)
+        .await
+        .map_err(|e| format!("Database verify error: {}", e))?;
+
+    let updated_status: String = verify_row.get("status");
+    println!("Verified status of order {}: {}", order_id, updated_status);
+
+    Ok(format!("Order {} status updated to {}", order_id, updated_status))
+}
+
 // System settings
 #[tauri::command]
 async fn get_system_settings(_state: tauri::State<'_, Database>) -> Result<String, String> {
@@ -617,6 +734,9 @@ pub fn run() {
             logout_user,
             get_orders_for_master,
             get_orders_for_storekeeper,
+            get_orders_for_diagnostician,
+            save_diagnostic_results,
+            update_order_status,
             get_client_by_id,
             get_car_by_id,
             get_cars_by_client_id,

@@ -183,7 +183,6 @@ const StorekeeperDashboard: React.FC = () => {
     if (activeTab === 'selection') {
       // Заказы, требующие подбора запчастей (после диагностики)
       return orders.filter(order =>
-        order.status === 'Diagnostics' ||
         order.status === 'Parts_Selection' ||
         order.status === 'Approval'
       );
