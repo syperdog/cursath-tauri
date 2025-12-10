@@ -14,6 +14,7 @@ interface Order {
   client_id: number;
   car_id: number;
   master_id: number | null;
+  worker_id: number | null; // Main worker assigned to the entire order
   status: string;
   complaint: string | null;
   current_mileage: number | null;
@@ -44,12 +45,7 @@ interface Car {
   created_at: string;
 }
 
-// New interface for client registration
-interface NewClient {
-  full_name: string;
-  phone: string;
-  address: string | null;
-}
+
 
 const MasterDashboard: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -70,8 +66,7 @@ const MasterDashboard: React.FC = () => {
   const [isNewOrderModalOpen, setIsNewOrderModalOpen] = useState(false);
   const [selectedClientForNewOrder, setSelectedClientForNewOrder] = useState<Client | null>(null);
   const [selectedCarForNewOrder, setSelectedCarForNewOrder] = useState<Car | null>(null);
-  const [showAddClient, setShowAddClient] = useState(false);
-  const [showAddCar, setShowAddCar] = useState(false);
+
   const [showArchive, setShowArchive] = useState(false);
   const [archiveFilter, setArchiveFilter] = useState<{ periodStart: string, periodEnd: string, status: string, search: string }>({
     periodStart: '2024-01-01',
@@ -338,8 +333,6 @@ const MasterDashboard: React.FC = () => {
     } else { // Это заказ
       // Найдем клиента и автомобиль для этого заказа
       const order = item as Order;
-      const client = clients[order.client_id] || null;
-      const car = cars[order.car_id] || null;
       setSelectedOrder(order);
       setIsModalOpen(true);
     }
@@ -361,32 +354,16 @@ const MasterDashboard: React.FC = () => {
   }, []);
 
   // Реф для хранения таймера
-  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const searchTimeoutRef = useRef<number | null>(null);
   // Реф для контейнера поиска
   const searchContainerRef = useRef<HTMLDivElement>(null);
 
-  // Обработчик выбора результата поиска
-  const handleSearchResultSelect = (item: Client | Car | Order) => {
-    if ('phone' in item) { // Это клиент
-      handleCreateNewOrder(item as Client, null);
-    } else if ('license_plate' in item) { // Это автомобиль
-      // Найдем клиента для этого автомобиля
-      const client = clients[(item as Car).client_id] || null;
-      handleCreateNewOrder(client, item as Car);
-    } else { // Это заказ
-      // Найдем клиента и автомобиль для этого заказа
-      const order = item as Order;
-      const client = clients[order.client_id] || null;
-      const car = cars[order.car_id] || null;
-      setSelectedOrder(order);
-      setIsModalOpen(true);
-    }
-  };
+
 
   // Загрузка неисправностей для заказа
   const loadOrderDefects = async (orderId: number) => {
     try {
-      const defects = await invoke('get_diagnostic_results_by_order_id', { orderId });
+      const defects = await invoke<any[]>('get_diagnostic_results_by_order_id', { orderId });
       setOrderDefects(defects);
     } catch (error) {
       console.error(`Error loading defects for order ${orderId}:`, error);
@@ -397,7 +374,7 @@ const MasterDashboard: React.FC = () => {
   // Загрузка работ для заказа
   const loadOrderWorks = async (orderId: number) => {
     try {
-      const works = await invoke('get_order_works_by_order_id', { orderId });
+      const works = await invoke<any[]>('get_order_works_by_order_id', { orderId });
       setOrderWorks(works);
     } catch (error) {
       console.error(`Error loading works for order ${orderId}:`, error);
@@ -408,7 +385,7 @@ const MasterDashboard: React.FC = () => {
   // Загрузка запчастей для заказа
   const loadOrderParts = async (orderId: number) => {
     try {
-      const parts = await invoke('get_order_parts_by_order_id', { orderId });
+      const parts = await invoke<any[]>('get_order_parts_by_order_id', { orderId });
       setOrderParts(parts);
     } catch (error) {
       console.error(`Error loading parts for order ${orderId}:`, error);
@@ -421,13 +398,31 @@ const MasterDashboard: React.FC = () => {
     setSelectedOrder(order);
 
     if (order.status === 'Approval') {
-      // Загружаем данные для модального окна согласования
-      await Promise.all([
-        loadOrderDefects(order.id),
-        loadOrderWorks(order.id),
-        loadOrderParts(order.id)
-      ]);
-      setShowClientApprovalModal(true);
+      // Загружаем данные для модального окна согласования или назначения работников
+      try {
+        const [defects, works, parts] = await Promise.all([
+          invoke<any[]>('get_diagnostic_results_by_order_id', { orderId: order.id }),
+          invoke<any[]>('get_order_works_by_order_id', { orderId: order.id }),
+          invoke<any[]>('get_order_parts_by_order_id', { orderId: order.id })
+        ]);
+        
+        setOrderDefects(defects);
+        setOrderWorks(works);
+        setOrderParts(parts);
+        
+        // Проверяем, есть ли уже подтвержденные работы
+        const confirmedWorks = works.filter((work: any) => work.is_confirmed);
+        if (confirmedWorks.length > 0) {
+          // Если работы уже подтверждены, открываем назначение работников
+          setShowAssignWorkersModal(true);
+        } else {
+          // Если работы еще не подтверждены, открываем согласование
+          setShowClientApprovalModal(true);
+        }
+      } catch (error) {
+        console.error('Error loading order data:', error);
+        setIsModalOpen(true);
+      }
     } else {
       setIsModalOpen(true);
     }
@@ -701,9 +696,8 @@ const MasterDashboard: React.FC = () => {
                   placeholder="Поиск: клиент, авто..."
                   value={archiveFilter.search}
                   onChange={(e) => setArchiveFilter({...archiveFilter, search: e.target.value})}
-                  onClick={() => setShowSearchModal(true)}
                 />
-                <button className="search-btn" onClick={() => setShowSearchModal(true)}>🔍</button>
+                <button className="search-btn">🔍</button>
               </div>
             </div>
 
@@ -756,6 +750,57 @@ const MasterDashboard: React.FC = () => {
         />
       )}
 
+      {/* Кнопки для отладки */}
+      {selectedOrder && selectedOrder.status === 'Approval' && (
+        <div style={{ position: 'fixed', top: '10px', right: '10px', zIndex: 9999, display: 'flex', flexDirection: 'column', gap: '5px' }}>
+          <button
+            onClick={async () => {
+              try {
+                const debugInfo = await invoke<string>('debug_order_status', { orderId: selectedOrder.id });
+                console.log('Debug order info:', debugInfo);
+                alert('Debug info (см. консоль):\n' + debugInfo);
+              } catch (error) {
+                console.error('Debug: Error getting order status:', error);
+              }
+            }}
+            style={{ 
+              padding: '8px', 
+              backgroundColor: '#28a745', 
+              color: 'white', 
+              border: 'none', 
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontSize: '12px'
+            }}
+          >
+            🔍 Проверить статус заказа
+          </button>
+          <button
+            onClick={async () => {
+              try {
+                const works = await invoke<any[]>('get_order_works_by_order_id', { orderId: selectedOrder.id });
+                console.log('Debug: Loaded works for assignment:', works);
+                setOrderWorks(works);
+                setShowAssignWorkersModal(true);
+              } catch (error) {
+                console.error('Debug: Error loading works:', error);
+              }
+            }}
+            style={{ 
+              padding: '8px', 
+              backgroundColor: '#007bff', 
+              color: 'white', 
+              border: 'none', 
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontSize: '12px'
+            }}
+          >
+            🔧 Назначить работников
+          </button>
+        </div>
+      )}
+
       {selectedOrder && showClientApprovalModal && (
         <ClientApprovalModal
           isOpen={showClientApprovalModal}
@@ -765,12 +810,41 @@ const MasterDashboard: React.FC = () => {
           works={orderWorks}
           parts={orderParts}
           onClose={() => setShowClientApprovalModal(false)}
-          onApprovalComplete={(confirmedWorks, confirmedParts) => {
-            console.log('Confirmed works:', confirmedWorks);
-            console.log('Confirmed parts:', confirmedParts);
-            // Обновляем статус заказа или перезагружаем данные
+          onApprovalComplete={async (confirmedWorks, confirmedParts) => {
+            console.log('MasterDashboard: Received confirmed works:', confirmedWorks);
+            console.log('MasterDashboard: Received confirmed parts:', confirmedParts);
+            
+            // Закрываем окно согласования
             setShowClientApprovalModal(false);
-            loadOrders(); // Перезагружаем список заказов
+            
+            // Небольшая задержка для корректного закрытия модального окна
+            setTimeout(async () => {
+              // Открываем модальное окно назначения работников, если есть подтвержденные работы или запчасти
+              // Это позволяет мастеру назначить исполнителей на работы и/или запчасти
+              if (confirmedWorks.length > 0 || confirmedParts.length > 0) {
+                console.log('MasterDashboard: Opening worker assignment modal (works:', confirmedWorks.length, ', parts:', confirmedParts.length, ')');
+                try {
+                  // Перезагружаем данные о работах из базы данных
+                  const updatedWorks = await invoke<any[]>('get_order_works_by_order_id', { orderId: selectedOrder!.id });
+                  console.log('MasterDashboard: Updated works from DB:', updatedWorks);
+
+                  // Фильтруем только подтвержденные работы
+                  const confirmedWorksFromDB = updatedWorks.filter((work: any) => work.is_confirmed);
+                  console.log('MasterDashboard: Confirmed works from DB:', confirmedWorksFromDB);
+
+                  // Даже если подтвержденных работ нет, мы все равно отображаем окно назначения,
+                  // чтобы пользователь мог назначить основного исполнителя на заказ
+                  setOrderWorks(updatedWorks);
+                  setShowAssignWorkersModal(true);
+                } catch (error) {
+                  console.error('Error reloading works:', error);
+                  alert('Ошибка при загрузке работ: ' + error);
+                }
+              } else {
+                console.log('MasterDashboard: No confirmed works or parts, reloading orders');
+                loadOrders(); // Перезагружаем список заказов
+              }
+            }, 100);
           }}
           onRejectAll={async () => {
             // Обработка отказа от всего - изменяем статус заказа на "Closed"
@@ -786,6 +860,11 @@ const MasterDashboard: React.FC = () => {
             } catch (error) {
               console.error('Error rejecting order:', error);
             }
+          }}
+          onAssignWorkers={() => {
+            // Закрываем модальное окно согласования и открываем назначение работников
+            setShowClientApprovalModal(false);
+            setShowAssignWorkersModal(true);
           }}
         />
       )}
@@ -898,12 +977,11 @@ const MasterDashboard: React.FC = () => {
         <AssignWorkersModal
           isOpen={showAssignWorkersModal}
           order={selectedOrder}
-          works={[]} // In real app, we would fetch works for this order
-          workers={[]} // In real app, we would fetch available workers
+          works={orderWorks}
           onClose={() => setShowAssignWorkersModal(false)}
           onAssignmentSaved={() => {
             setShowAssignWorkersModal(false);
-            // Update the order status after assigning workers
+            loadOrders(); // Перезагружаем список заказов после назначения работников
           }}
         />
       )}

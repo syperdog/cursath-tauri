@@ -23,6 +23,7 @@ struct Order {
     client_id: i32,
     car_id: i32,
     master_id: Option<i32>,
+    worker_id: Option<i32>, // Main worker assigned to the entire order
     status: String, // We keep as String for compatibility with frontend
     complaint: Option<String>,
     current_mileage: Option<i32>,
@@ -71,7 +72,7 @@ struct OrderWork {
     order_id: i32,
     service_id: Option<i32>, // Может быть null
     service_name_snapshot: String,
-    price: f64,
+    price: String, // Decimal as string for compatibility
     worker_id: Option<i32>, // Может быть null
     status: String, // Статус работы (Pending, In_Progress, Done)
     is_confirmed: bool, // Подтверждено ли клиентом
@@ -84,7 +85,7 @@ struct OrderPart {
     warehouse_item_id: Option<i32>, // Может быть null (если не со склада)
     part_name_snapshot: String,
     brand: String,
-    price_per_unit: f64,
+    price_per_unit: String, // Decimal as string for compatibility
     quantity: i32,
     is_confirmed: bool, // Подтверждено ли клиентом
 }
@@ -226,7 +227,7 @@ async fn logout_user(session_token: String) -> Result<String, String> {
 #[tauri::command]
 async fn get_orders_for_master(state: tauri::State<'_, Database>) -> Result<Vec<Order>, String> {
     // Query all orders for the master from the database
-    let query = "SELECT id, client_id, car_id, master_id, status::text, complaint, current_mileage, prepayment::text, total_amount::text, created_at::text, completed_at::text FROM orders WHERE status != 'Closed' AND status != 'Cancelled' ORDER BY created_at DESC";
+    let query = "SELECT id, client_id, car_id, master_id, worker_id, status::text, complaint, current_mileage, prepayment::text, total_amount::text, created_at::text, completed_at::text FROM orders WHERE status != 'Closed' AND status != 'Cancelled' ORDER BY created_at DESC";
     let rows = sqlx::query(query)
         .fetch_all(&state.pool)
         .await
@@ -239,6 +240,7 @@ async fn get_orders_for_master(state: tauri::State<'_, Database>) -> Result<Vec<
             client_id: row.get("client_id"),
             car_id: row.get("car_id"),
             master_id: row.get("master_id"),
+            worker_id: row.get("worker_id"),
             status: row.get("status"),
             complaint: row.get("complaint"),
             current_mileage: row.get("current_mileage"),
@@ -311,7 +313,7 @@ async fn search_orders_clients_cars(query: String, state: tauri::State<'_, Datab
     let query_lower = format!("%{}%", query.to_lowercase());
 
     // Search for orders by ID
-    let order_query = "SELECT id, client_id, car_id, master_id, status::text, complaint, current_mileage, prepayment::text, total_amount::text, created_at::text, completed_at::text FROM orders WHERE id::text LIKE $1";
+    let order_query = "SELECT id, client_id, car_id, master_id, worker_id, status::text, complaint, current_mileage, prepayment::text, total_amount::text, created_at::text, completed_at::text FROM orders WHERE id::text LIKE $1";
     let order_results = sqlx::query(order_query)
         .bind(&query)
         .fetch_all(&state.pool)
@@ -325,6 +327,7 @@ async fn search_orders_clients_cars(query: String, state: tauri::State<'_, Datab
             client_id: row.get("client_id"),
             car_id: row.get("car_id"),
             master_id: row.get("master_id"),
+            worker_id: row.get("worker_id"),
             status: row.get("status"),
             complaint: row.get("complaint"),
             current_mileage: row.get("current_mileage"),
@@ -384,7 +387,7 @@ async fn search_orders_clients_cars(query: String, state: tauri::State<'_, Datab
 #[tauri::command]
 async fn get_order_works_by_order_id(order_id: i32, state: tauri::State<'_, Database>) -> Result<Vec<OrderWork>, String> {
     // Запрос для получения работ по ID заказа
-    let query = "SELECT id, order_id, service_id, service_name_snapshot, price, worker_id, status::text as status, is_confirmed FROM order_works WHERE order_id = $1";
+    let query = "SELECT id, order_id, service_id, service_name_snapshot, price::text, worker_id, status::text as status, is_confirmed FROM order_works WHERE order_id = $1";
     let rows = sqlx::query(query)
         .bind(order_id)
         .fetch_all(&state.pool)
@@ -411,7 +414,7 @@ async fn get_order_works_by_order_id(order_id: i32, state: tauri::State<'_, Data
 #[tauri::command]
 async fn get_order_parts_by_order_id(order_id: i32, state: tauri::State<'_, Database>) -> Result<Vec<OrderPart>, String> {
     // Запрос для получения запчастей по ID заказа
-    let query = "SELECT id, order_id, warehouse_item_id, part_name_snapshot, brand, price_per_unit, quantity, is_confirmed FROM order_parts WHERE order_id = $1";
+    let query = "SELECT id, order_id, warehouse_item_id, part_name_snapshot, brand, price_per_unit::text, quantity, is_confirmed FROM order_parts WHERE order_id = $1";
     let rows = sqlx::query(query)
         .bind(order_id)
         .fetch_all(&state.pool)
@@ -467,7 +470,7 @@ async fn get_cars_by_client_id(client_id: i32, state: tauri::State<'_, Database>
 async fn get_orders_for_storekeeper(state: tauri::State<'_, Database>) -> Result<Vec<Order>, String> {
     // In a real application, this would query the database for orders that need storekeeper attention
     // For now, returning hardcoded data for testing purposes
-    let query = "SELECT id, client_id, car_id, master_id, status::text, complaint, current_mileage, prepayment::text, total_amount::text, created_at::text, completed_at::text FROM orders WHERE status IN ('Parts_Selection', 'Approval', 'In_Work')";
+    let query = "SELECT id, client_id, car_id, master_id, worker_id, status::text, complaint, current_mileage, prepayment::text, total_amount::text, created_at::text, completed_at::text FROM orders WHERE status IN ('Parts_Selection', 'Approval', 'In_Work')";
     let rows = sqlx::query(query)
         .fetch_all(&state.pool)
         .await
@@ -480,6 +483,7 @@ async fn get_orders_for_storekeeper(state: tauri::State<'_, Database>) -> Result
             client_id: row.get("client_id"),
             car_id: row.get("car_id"),
             master_id: row.get("master_id"),
+            worker_id: row.get("worker_id"),
             status: row.get("status"),
             complaint: row.get("complaint"),
             current_mileage: row.get("current_mileage"),
@@ -501,7 +505,7 @@ async fn get_orders_for_storekeeper(state: tauri::State<'_, Database>) -> Result
 #[tauri::command]
 async fn get_orders_for_diagnostician(state: tauri::State<'_, Database>) -> Result<Vec<Order>, String> {
     // Query to get orders that need diagnostics from the database
-    let query = "SELECT id, client_id, car_id, master_id, status::text, complaint, current_mileage, prepayment::text, total_amount::text, created_at::text, completed_at::text FROM orders WHERE status = 'Diagnostics'";
+    let query = "SELECT id, client_id, car_id, master_id, worker_id, status::text, complaint, current_mileage, prepayment::text, total_amount::text, created_at::text, completed_at::text FROM orders WHERE status = 'Diagnostics'";
     let rows = sqlx::query(query)
         .fetch_all(&state.pool)
         .await
@@ -514,6 +518,7 @@ async fn get_orders_for_diagnostician(state: tauri::State<'_, Database>) -> Resu
             client_id: row.get("client_id"),
             car_id: row.get("car_id"),
             master_id: row.get("master_id"),
+            worker_id: row.get("worker_id"),
             status: row.get("status"),
             complaint: row.get("complaint"),
             current_mileage: row.get("current_mileage"),
@@ -535,7 +540,7 @@ async fn get_orders_for_diagnostician(state: tauri::State<'_, Database>) -> Resu
 #[tauri::command]
 async fn add_part_to_order(order_id: i32, part_name: String, brand: String, supplier: String, price: f64, _availability: String, _part_number: String, state: tauri::State<'_, Database>) -> Result<String, String> {
     // Добавляем запчасть в таблицу order_parts
-    let query = "INSERT INTO order_parts (order_id, part_name_snapshot, brand, supplier, price_per_unit, source_type) VALUES ($1, $2, $3, $4, $5, 'Supplier')";
+    let query = "INSERT INTO order_parts (order_id, part_name_snapshot, brand, supplier, price_per_unit, source_type) VALUES ($1, $2, $3, $4, $5::numeric, 'Supplier')";
     sqlx::query(query)
         .bind(order_id)
         .bind(&part_name)
@@ -578,16 +583,190 @@ async fn confirm_order_parts_and_works(
             .map_err(|e| format!("Database error updating part: {}", e))?;
     }
 
-    // Изменяем статус заказа на "In_Work"
-    let query = "UPDATE orders SET status = $1::order_status WHERE id = $2";
-    sqlx::query(query)
+    // Независимо от того, есть ли подтвержденные работы или запчасти,
+    // заказ остается в статусе "Approval", чтобы дать возможность назначить работников
+    // Статус изменится на "In_Work" только при назначении работников через assign_workers_to_order
+    println!("Order {} has confirmed works: {}, parts: {}, remains in Approval status for worker assignment",
+             order_id, confirmed_works.len(), confirmed_parts.len());
+
+    Ok(format!("Order {} confirmed with {} works and {} parts", order_id, confirmed_works.len(), confirmed_parts.len()))
+}
+
+#[tauri::command]
+async fn get_available_workers(state: tauri::State<'_, Database>) -> Result<Vec<User>, String> {
+    let query = "SELECT id, full_name, role::text, login, password_hash, pin_code, status::text FROM users WHERE role = 'Worker' AND status = 'Active'";
+    let rows = sqlx::query(query)
+        .fetch_all(&state.pool)
+        .await
+        .map_err(|e| format!("Database error: {}", e))?;
+
+    let mut workers = Vec::new();
+    for row in rows {
+        workers.push(User {
+            id: row.get("id"),
+            full_name: row.get("full_name"),
+            role: row.get("role"),
+            login: row.get("login"),
+            password_hash: row.get("password_hash"),
+            pin_code: row.get("pin_code"),
+            status: row.get("status"),
+        });
+    }
+
+    Ok(workers)
+}
+
+#[tauri::command]
+async fn check_database_triggers(state: tauri::State<'_, Database>) -> Result<String, String> {
+    let query = "
+        SELECT 
+            t.tgname as trigger_name,
+            c.relname as table_name,
+            p.proname as function_name,
+            CASE t.tgtype & 66
+                WHEN 2 THEN 'BEFORE'
+                WHEN 64 THEN 'INSTEAD OF'
+                ELSE 'AFTER'
+            END as trigger_timing,
+            CASE t.tgtype & 28
+                WHEN 4 THEN 'INSERT'
+                WHEN 8 THEN 'DELETE'
+                WHEN 16 THEN 'UPDATE'
+                WHEN 12 THEN 'INSERT OR DELETE'
+                WHEN 20 THEN 'INSERT OR UPDATE'
+                WHEN 24 THEN 'DELETE OR UPDATE'
+                WHEN 28 THEN 'INSERT OR DELETE OR UPDATE'
+            END as trigger_events
+        FROM pg_trigger t
+        JOIN pg_class c ON t.tgrelid = c.oid
+        JOIN pg_proc p ON t.tgfoid = p.oid
+        WHERE c.relname IN ('orders', 'order_works', 'order_parts', 'order_defects')
+        AND NOT t.tgisinternal
+        ORDER BY c.relname, t.tgname
+    ";
+
+    let rows = sqlx::query(query)
+        .fetch_all(&state.pool)
+        .await
+        .map_err(|e| format!("Database error: {}", e))?;
+
+    let mut result = String::new();
+    result.push_str("=== DATABASE TRIGGERS ===\n");
+    
+    if rows.is_empty() {
+        result.push_str("No custom triggers found in the database.\n");
+    } else {
+        for row in rows {
+            let trigger_name: String = row.get("trigger_name");
+            let table_name: String = row.get("table_name");
+            let function_name: String = row.get("function_name");
+            let trigger_timing: String = row.get("trigger_timing");
+            let trigger_events: String = row.get("trigger_events");
+            
+            result.push_str(&format!(
+                "Table: {} | Trigger: {} | Function: {} | Timing: {} | Events: {}\n",
+                table_name, trigger_name, function_name, trigger_timing, trigger_events
+            ));
+        }
+    }
+
+    Ok(result)
+}
+
+#[tauri::command]
+async fn debug_order_status(order_id: i32, state: tauri::State<'_, Database>) -> Result<String, String> {
+    // Получаем информацию о заказе
+    let order_query = "SELECT id, worker_id, status::text FROM orders WHERE id = $1";
+    let order_row = sqlx::query(order_query)
+        .bind(order_id)
+        .fetch_optional(&state.pool)
+        .await
+        .map_err(|e| format!("Database error: {}", e))?;
+
+    let mut debug_info = String::new();
+    
+    if let Some(row) = order_row {
+        let status: String = row.get("status");
+        debug_info.push_str(&format!("Order {} status: {}\n", order_id, status));
+    } else {
+        return Err(format!("Order {} not found", order_id));
+    }
+
+    // Получаем информацию о работах
+    let works_query = "SELECT id, service_name_snapshot, is_confirmed, worker_id FROM order_works WHERE order_id = $1";
+    let works_rows = sqlx::query(works_query)
+        .bind(order_id)
+        .fetch_all(&state.pool)
+        .await
+        .map_err(|e| format!("Database error: {}", e))?;
+
+    debug_info.push_str(&format!("Works count: {}\n", works_rows.len()));
+    for row in works_rows {
+        let work_id: i32 = row.get("id");
+        let service_name: String = row.get("service_name_snapshot");
+        let is_confirmed: bool = row.get("is_confirmed");
+        let worker_id: Option<i32> = row.get("worker_id");
+        debug_info.push_str(&format!("  Work {}: {} - confirmed: {} - worker: {:?}\n", 
+            work_id, service_name, is_confirmed, worker_id));
+    }
+
+    Ok(debug_info)
+}
+
+#[tauri::command]
+async fn assign_workers_to_order(
+    order_id: i32,
+    work_assignments: Vec<(i32, i32)>, // (work_id, worker_id) pairs
+    main_worker_id: Option<i32>, // Optional main worker for the entire order
+    state: tauri::State<'_, Database>
+) -> Result<String, String> {
+    // Назначаем работников на работы
+    for (work_id, worker_id) in &work_assignments {
+        let query = "UPDATE order_works SET worker_id = $1, status = 'Pending' WHERE id = $2 AND order_id = $3";
+        sqlx::query(query)
+            .bind(worker_id)
+            .bind(work_id)
+            .bind(order_id)
+            .execute(&state.pool)
+            .await
+            .map_err(|e| format!("Database error assigning worker: {}", e))?;
+    }
+
+    // Обновляем статус заказа и назначаем основного исполнителя
+    let mut tx = state.pool.begin().await.map_err(|e| format!("Database transaction error: {}", e))?;
+
+    // Сначала обновляем статус заказа
+    let status_query = "UPDATE orders SET status = $1::order_status WHERE id = $2";
+    sqlx::query(status_query)
         .bind("In_Work")
         .bind(order_id)
-        .execute(&state.pool)
+        .execute(&mut *tx)
         .await
         .map_err(|e| format!("Database error updating order status: {}", e))?;
 
-    Ok(format!("Order {} confirmed with {} works and {} parts", order_id, confirmed_works.len(), confirmed_parts.len()))
+    // Затем, если указан основной исполнитель, назначаем его
+    if let Some(worker_id) = main_worker_id {
+        let worker_query = "UPDATE orders SET worker_id = $1 WHERE id = $2";
+        sqlx::query(worker_query)
+            .bind(worker_id)
+            .bind(order_id)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| format!("Database error assigning main worker: {}", e))?;
+    }
+
+    tx.commit()
+        .await
+        .map_err(|e| format!("Database transaction commit error: {}", e))?;
+
+    Ok(format!("Workers assigned to order {} for {} works{}",
+        order_id,
+        work_assignments.len(),
+        if let Some(worker_id) = main_worker_id {
+            format!(", main worker assigned: {}", worker_id)
+        } else {
+            ", no main worker assigned".to_string()
+        }))
 }
 
 #[tauri::command]
@@ -949,7 +1128,11 @@ pub fn run() {
             get_system_logs,
             search_parts_by_vin,
             add_part_to_order,
-            confirm_order_parts_and_works
+            confirm_order_parts_and_works,
+            get_available_workers,
+            assign_workers_to_order,
+            debug_order_status,
+            check_database_triggers
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

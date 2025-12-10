@@ -6,7 +6,7 @@ interface Work {
   id: number;
   service_id?: number;
   service_name_snapshot: string;
-  price: number;
+  price: string; // Changed to string for DECIMAL compatibility
   worker_id?: number | null;
   status: string;
   is_confirmed: boolean;
@@ -17,7 +17,7 @@ interface Part {
   warehouse_item_id?: number | null;
   part_name_snapshot: string;
   brand: string;
-  price_per_unit: number;
+  price_per_unit: string; // Changed to string for DECIMAL compatibility
   quantity: number;
   is_confirmed: boolean;
 }
@@ -45,6 +45,7 @@ interface ClientApprovalModalProps {
   onClose: () => void;
   onApprovalComplete: (confirmedWorks: Work[], confirmedParts: Part[]) => void;
   onRejectAll: () => void;
+  onAssignWorkers?: () => void; // New callback for opening worker assignment
 }
 
 const ClientApprovalModal: React.FC<ClientApprovalModalProps> = ({
@@ -56,7 +57,8 @@ const ClientApprovalModal: React.FC<ClientApprovalModalProps> = ({
   parts,
   onClose,
   onApprovalComplete,
-  onRejectAll
+  onRejectAll,
+  onAssignWorkers
 }) => {
   const [localWorks, setLocalWorks] = useState<Work[]>([]);
   const [localParts, setLocalParts] = useState<Part[]>([]);
@@ -73,10 +75,10 @@ const ClientApprovalModal: React.FC<ClientApprovalModalProps> = ({
     // Calculate the total amount when works or parts change
     const total = localWorks
       .filter(work => work.is_confirmed)
-      .reduce((sum, work) => sum + work.price, 0) +
+      .reduce((sum, work) => sum + parseFloat(work.price || '0'), 0) +
       localParts
         .filter(part => part.is_confirmed)
-        .reduce((sum, part) => sum + (part.price_per_unit * part.quantity), 0);
+        .reduce((sum, part) => sum + (parseFloat(part.price_per_unit || '0') * part.quantity), 0);
 
     setTotalAmount(total);
   }, [localWorks, localParts]);
@@ -104,16 +106,27 @@ const ClientApprovalModal: React.FC<ClientApprovalModalProps> = ({
       const confirmedWorkIds = localWorks.filter(work => work.is_confirmed).map(work => work.id);
       const confirmedPartIds = localParts.filter(part => part.is_confirmed).map(part => part.id);
 
+      if (confirmedWorkIds.length === 0 && confirmedPartIds.length === 0) {
+        alert('Выберите хотя бы одну работу или запчасть для подтверждения');
+        return;
+      }
+
       // Вызываем команду подтверждения в Rust
-      await invoke('confirm_order_parts_and_works', {
+      const result = await invoke('confirm_order_parts_and_works', {
         orderId: order.id,
         confirmedWorks: confirmedWorkIds,
         confirmedParts: confirmedPartIds
       });
+      
+      console.log('Confirmation result:', result);
+      console.log('Confirmed work IDs:', confirmedWorkIds);
+      console.log('Confirmed part IDs:', confirmedPartIds);
 
       // Передаем подтвержденные работы и запчасти наверх
       const confirmedWorks = localWorks.filter(work => work.is_confirmed);
       const confirmedParts = localParts.filter(part => part.is_confirmed);
+      
+      console.log('Confirmed works for assignment:', confirmedWorks);
       onApprovalComplete(confirmedWorks, confirmedParts);
     } catch (error) {
       console.error('Error confirming order:', error);
@@ -182,7 +195,7 @@ const ClientApprovalModal: React.FC<ClientApprovalModalProps> = ({
                       {work.service_name_snapshot}
                     </div>
                     <div className="work-price">
-                      {work.price.toFixed(2)} $
+                      {parseFloat(work.price || '0').toFixed(2)} $
                     </div>
                   </div>
                 ))}
@@ -203,7 +216,7 @@ const ClientApprovalModal: React.FC<ClientApprovalModalProps> = ({
                       {part.part_name_snapshot} ({part.brand}) x{part.quantity}
                     </div>
                     <div className="part-price">
-                      {(part.price_per_unit * part.quantity).toFixed(2)} $
+                      {(parseFloat(part.price_per_unit || '0') * part.quantity).toFixed(2)} $
                     </div>
                   </div>
                 ))}

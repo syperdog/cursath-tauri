@@ -8,6 +8,13 @@ interface Order {
   prepayment: string | null;
   client_id: number;
   car_id: number;
+  worker_id: number | null; // Main worker assigned to the entire order
+  master_id: number | null;
+  status: string;
+  complaint: string | null;
+  current_mileage: number | null;
+  created_at: string;
+  completed_at: string | null;
   // другие поля заказа
 }
 

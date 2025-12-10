@@ -8,6 +8,7 @@ interface Order {
   client_id: number;
   car_id: number;
   master_id: number | null;
+  worker_id: number | null; // Main worker assigned to the entire order
   status: string;
   complaint: string | null;
   current_mileage: number | null;
