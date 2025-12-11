@@ -94,8 +94,16 @@ const DiagnosticsModal: React.FC<Props> = ({
       console.log(`Завершаем диагностику для заказа #${orderId}`);
       console.log('Результат:', result);
 
+      // Получаем токен сессии из localStorage
+      const sessionToken = localStorage.getItem('sessionToken');
+      if (!sessionToken) {
+        alert('Сессия не найдена. Пожалуйста, войдите в систему.');
+        return;
+      }
+
       // Затем обновляем статус заказа на 'Parts_Selection', чтобы передать заказ кладовщику
       const statusUpdateResult = await invoke('update_order_status', {
+        sessionToken,
         orderId: orderId,
         newStatus: 'Parts_Selection'
       });

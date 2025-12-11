@@ -71,8 +71,16 @@ const FinalProcessingModal: React.FC<FinalProcessingModalProps> = ({
   const handleConfirmDelivery = async () => {
     setIsProcessing(true);
     try {
+      // Получаем токен сессии из localStorage
+      const sessionToken = localStorage.getItem('sessionToken');
+      if (!sessionToken) {
+        alert('Сессия не найдена. Пожалуйста, войдите в систему.');
+        return;
+      }
+
       // Обновляем статус заказа на "Closed" (окончательно закрыт)
       await invoke('update_order_status', {
+        sessionToken,
         orderId: order.id,
         newStatus: 'Closed'
       });

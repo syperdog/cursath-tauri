@@ -237,8 +237,16 @@ const StorekeeperDashboard: React.FC = () => {
           });
         }
 
+        // Получаем токен сессии из localStorage
+        const sessionToken = localStorage.getItem('sessionToken');
+        if (!sessionToken) {
+          alert('Сессия не найдена. Пожалуйста, войдите в систему.');
+          return;
+        }
+
         // Изменяем статус заказа на "Approval"
         await invoke('update_order_status', {
+          sessionToken,
           orderId: selectedOrderForParts.id,
           newStatus: 'Approval'
         });

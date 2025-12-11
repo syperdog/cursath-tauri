@@ -144,6 +144,19 @@ async fn login_user(username: String, password: String, state: tauri::State<'_, 
                             sessions.insert(session_token.clone(), user.clone());
                         }
 
+                        // Логируем успешный вход пользователя
+                        let log_result = log_event(
+                            Some(user.id),
+                            "Login".to_string(),
+                            format!("Успешный вход пользователя '{}' с ролью '{}'", user.full_name, user.role),
+                            None, // IP-адрес пока не реализован
+                            state.clone()
+                        ).await;
+
+                        if let Err(e) = log_result {
+                            eprintln!("Error logging user login: {}", e);
+                        }
+
                         // Return both user and session token
                         Ok((user, session_token))
                     } else {
@@ -189,6 +202,19 @@ async fn login_worker(pin: String, state: tauri::State<'_, Database>) -> Result<
         {
             let mut sessions = SESSIONS.lock().map_err(|_| "Session lock error")?;
             sessions.insert(session_token.clone(), user.clone());
+        }
+
+        // Логируем успешный вход работника
+        let log_result = log_event(
+            Some(user.id),
+            "Login".to_string(),
+            format!("Успешный вход работника '{}' с ролью '{}'", user.full_name, user.role),
+            None, // IP-адрес пока не реализован
+            state.clone()
+        ).await;
+
+        if let Err(e) = log_result {
+            eprintln!("Error logging worker login: {}", e);
         }
 
         Ok((user, session_token))
@@ -1696,26 +1722,35 @@ async fn save_diagnostic_results(order_id: i32, diagnostician_id: i32, defect_ty
 }
 
 #[tauri::command]
-async fn update_order_status(order_id: i32, new_status: String, state: tauri::State<'_, Database>) -> Result<String, String> {
+async fn update_order_status(session_token: String, order_id: i32, new_status: String, state: tauri::State<'_, Database>) -> Result<String, String> {
+    // Получаем информацию о пользователе из сессии
+    let user = {
+        let sessions = SESSIONS.lock().map_err(|_| "Session lock error")?;
+        sessions.get(&session_token).cloned().ok_or("Invalid session token")?
+    };
+
     println!("Updating order {} status to {}", order_id, new_status);
 
     // Проверим, существует ли заказ с указанным ID
-    let check_query = "SELECT status::text FROM orders WHERE id = $1";
+    let check_query = "SELECT status::text, client_id, car_id FROM orders WHERE id = $1";
     let row = sqlx::query(check_query)
         .bind(order_id)
         .fetch_optional(&state.pool)
         .await
         .map_err(|e| format!("Database check error: {}", e))?;
 
-    match row {
+    let (current_status, client_id, car_id) = match row {
         Some(row) => {
             let current_status: String = row.get("status");
+            let client_id: i32 = row.get("client_id");
+            let car_id: i32 = row.get("car_id");
             println!("Current status of order {}: {}", order_id, current_status);
+            (current_status, client_id, car_id)
         },
         None => {
             return Err(format!("Order {} not found", order_id));
         }
-    }
+    };
 
     // Update the order status in the database
     println!("About to execute update query with status: {} for order: {}", new_status, order_id);
@@ -1746,6 +1781,19 @@ async fn update_order_status(order_id: i32, new_status: String, state: tauri::St
 
     let updated_status: String = verify_row.get("status");
     println!("Verified status of order {}: {}", order_id, updated_status);
+
+    // Логируем изменение статуса заказа
+    let log_result = log_event(
+        Some(user.id),
+        "Update_Order_Status".to_string(),
+        format!("Изменен статус заказа {} (клиент: {}, авто: {}) с '{}' на '{}'", order_id, client_id, car_id, current_status, updated_status),
+        None, // IP-адрес пока не реализован
+        state.clone()
+    ).await;
+
+    if let Err(e) = log_result {
+        eprintln!("Error logging order status update: {}", e);
+    }
 
     Ok(format!("Order {} status updated to {}", order_id, updated_status))
 }

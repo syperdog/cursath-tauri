@@ -167,8 +167,16 @@ const OrderExecutionModal: React.FC<OrderExecutionModalProps> = ({ orderId, onCl
 
     if (allCompleted) {
       try {
+        // Получаем токен сессии из localStorage
+        const sessionToken = localStorage.getItem('sessionToken');
+        if (!sessionToken) {
+          alert('Сессия не найдена. Пожалуйста, войдите в систему.');
+          return;
+        }
+
         // Обновляем статус заказа на 'Ready' - готов к выдаче, ожидает мастера
         await invoke('update_order_status', {
+          sessionToken,
           orderId: order!.id,
           newStatus: 'Ready' // заказ готов к выдаче
         });

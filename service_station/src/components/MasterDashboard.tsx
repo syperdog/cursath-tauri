@@ -898,7 +898,15 @@ const MasterDashboard: React.FC = () => {
             // Обработка отказа от всего - изменяем статус заказа на "Closed"
             // В реальной системе, возможно, нужно будет учесть оплату за диагностику
             try {
+              // Получаем токен сессии из localStorage
+              const sessionToken = localStorage.getItem('sessionToken');
+              if (!sessionToken) {
+                alert('Сессия не найдена. Пожалуйста, войдите в систему.');
+                return;
+              }
+
               await invoke('update_order_status', {
+                sessionToken,
                 orderId: selectedOrder.id,
                 newStatus: 'Closed'
               });
