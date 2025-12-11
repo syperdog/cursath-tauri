@@ -307,24 +307,28 @@ const OrderExecutionModal: React.FC<OrderExecutionModalProps> = ({ orderId, onCl
                   <p><strong>ЖАЛОБА КЛИЕНТА:</strong> {order?.complaint || 'Не указана'}</p>
 
                   <h4>ВЫЯВЛЕННЫЕ НЕИСПРАВНОСТИ:</h4>
-                  <table className="diagnostic-table">
-                    <thead>
-                      <tr>
-                        <th>#</th>
-                        <th>Неисправность</th>
-                        <th>Комментарий диагноста</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {defects.map((defect, index) => (
-                        <tr key={defect.id}>
-                          <td>{index + 1}</td>
-                          <td>{defect.defect_description}</td>
-                          <td>{defect.diagnostician_comment || 'Нет комментария'}</td>
+                  {defects.length > 0 ? (
+                    <table className="diagnostic-table">
+                      <thead>
+                        <tr>
+                          <th>#</th>
+                          <th>Неисправность</th>
+                          <th>Комментарий диагноста</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {defects.map((defect, index) => (
+                          <tr key={defect.id}>
+                            <td>{index + 1}</td>
+                            <td>{defect.defect_description}</td>
+                            <td>{defect.diagnostician_comment || 'Нет комментария'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <p className="no-defects">Неисправности не выявлены</p>
+                  )}
                 </div>
               </div>
 

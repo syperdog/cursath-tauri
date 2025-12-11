@@ -227,7 +227,7 @@ async fn logout_user(session_token: String) -> Result<String, String> {
 // Order management
 #[tauri::command]
 async fn get_orders_for_master(state: tauri::State<'_, Database>) -> Result<Vec<Order>, String> {
-    // Query all orders for the master from the database
+    // Query all orders for the master from the database (excluding Closed and Cancelled)
     let query = "SELECT id, client_id, car_id, master_id, worker_id, status::text, complaint, current_mileage, prepayment::text, total_amount::text, created_at::text, completed_at::text FROM orders WHERE status != 'Closed' AND status != 'Cancelled' ORDER BY created_at DESC";
     let rows = sqlx::query(query)
         .fetch_all(&state.pool)
@@ -534,6 +534,67 @@ async fn get_orders_for_worker(worker_id: i32, state: tauri::State<'_, Database>
     println!("Fetched {} orders for worker {}", orders.len(), worker_id);
     for order in &orders {
         println!("Order {} status: {}", order.id, order.status);
+    }
+
+    Ok(orders)
+}
+
+#[tauri::command]
+async fn get_archived_orders(
+    status_filter: String,
+    period_start: String,
+    period_end: String,
+    search_query: String,
+    state: tauri::State<'_, Database>
+) -> Result<Vec<Order>, String> {
+    // Query archived orders based on filters
+    let mut query = "SELECT id, client_id, car_id, master_id, worker_id, status::text, complaint, current_mileage, prepayment::text, total_amount::text, created_at::text, completed_at::text FROM orders WHERE status IN ('Closed', 'Cancelled')";
+    let mut query_builder = sqlx::QueryBuilder::new(query);
+
+    // Add status filter if not 'All'
+    if status_filter != "All" {
+        query_builder.push(" AND status = ");
+        query_builder.push_bind(&status_filter);
+    }
+
+    // Add date range filter
+    query_builder.push(" AND created_at BETWEEN ");
+    query_builder.push_bind(&period_start);
+    query_builder.push(" AND ");
+    query_builder.push_bind(&period_end);
+
+    // Add search filter if provided
+    if !search_query.is_empty() {
+        query_builder.push(" AND (");
+        query_builder.push("LOWER(complaint) LIKE CONCAT('%', LOWER(");
+        query_builder.push_bind(&search_query);
+        query_builder.push("), '%') OR ");
+        query_builder.push("LOWER(total_amount::text) LIKE CONCAT('%', LOWER(");
+        query_builder.push_bind(&search_query);
+        query_builder.push("), '%'))");
+    }
+
+    query_builder.push(" ORDER BY created_at DESC");
+
+    let query_result = query_builder.build();
+    let rows = query_result.fetch_all(&state.pool).await.map_err(|e| format!("Database error: {}", e))?;
+
+    let mut orders = Vec::new();
+    for row in rows {
+        orders.push(Order {
+            id: row.get("id"),
+            client_id: row.get("client_id"),
+            car_id: row.get("car_id"),
+            master_id: row.get("master_id"),
+            worker_id: row.get("worker_id"),
+            status: row.get("status"),
+            complaint: row.get("complaint"),
+            current_mileage: row.get("current_mileage"),
+            prepayment: row.get("prepayment"),
+            total_amount: row.get("total_amount"),
+            created_at: row.get("created_at"),
+            completed_at: row.get("completed_at"),
+        });
     }
 
     Ok(orders)
@@ -1379,7 +1440,8 @@ pub fn run() {
             get_defect_types_by_node,
             get_all_defect_types,
             get_orders_for_worker,
-            get_order_details_for_worker
+            get_order_details_for_worker,
+            get_archived_orders
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
