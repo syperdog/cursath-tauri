@@ -832,9 +832,8 @@ const MasterDashboard: React.FC = () => {
                   const confirmedWorksFromDB = updatedWorks.filter((work: any) => work.is_confirmed);
                   console.log('MasterDashboard: Confirmed works from DB:', confirmedWorksFromDB);
 
-                  // Даже если подтвержденных работ нет, мы все равно отображаем окно назначения,
-                  // чтобы пользователь мог назначить основного исполнителя на заказ
-                  setOrderWorks(updatedWorks);
+                  // Отображаем только подтвержденные работы для назначения
+                  setOrderWorks(confirmedWorksFromDB);
                   setShowAssignWorkersModal(true);
                 } catch (error) {
                   console.error('Error reloading works:', error);

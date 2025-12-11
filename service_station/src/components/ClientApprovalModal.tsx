@@ -183,7 +183,7 @@ const ClientApprovalModal: React.FC<ClientApprovalModalProps> = ({
 
             {localWorks.length > 0 && (
               <div className="works-group">
-                <h4>🔧 РАБОТЫ:</h4>
+                <h4>🔧 УСЛУГИ:</h4>
                 {localWorks.map(work => (
                   <div key={work.id} className="work-item">
                     <div>
