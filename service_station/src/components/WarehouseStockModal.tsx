@@ -102,84 +102,85 @@ const WarehouseStockModal: React.FC<WarehouseStockModalProps> = ({ isOpen, onClo
   if (!isOpen) return null;
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2>📦 ОСТАТКИ НА СКЛАДЕ</h2>
-          <button className="close-btn" onClick={onClose}>✖ ЗАКРЫТЬ</button>
-        </div>
+    <>
+      <div className="modal-overlay" onClick={onClose}>
+        <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-header">
+            <h2>📦 ОСТАТКИ НА СКЛАДЕ</h2>
+            <button className="close-btn" onClick={onClose}>✖ ЗАКРЫТЬ</button>
+          </div>
 
-        <div className="modal-body">
-          <div className="search-section">
-            <div className="search-input-container">
-              <input
-                type="text"
-                placeholder="Поиск: деталь, бренд, артикул..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-              <button className="search-btn">🔍</button>
+          <div className="modal-body">
+            <div className="search-section">
+              <div className="search-input-container">
+                <input
+                  type="text"
+                  placeholder="Поиск: деталь, бренд, артикул..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+                <button className="search-btn">🔍</button>
+              </div>
+            </div>
+
+            <div className="warehouse-stock-table">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Деталь / Бренд</th>
+                    <th>Артикул</th>
+                    <th>Ячейка</th>
+                    <th>Остаток</th>
+                    <th>Мин.</th>
+                    <th>Статус</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {loading ? (
+                    <tr>
+                      <td colSpan={6}>Загрузка остатков...</td>
+                    </tr>
+                  ) : filteredItems.length > 0 ? (
+                    filteredItems.map(item => (
+                      <tr key={item.id}>
+                        <td>
+                          <div>{item.name}</div>
+                          <div className="item-brand">{item.brand}</div>
+                        </td>
+                        <td>{item.part_number}</td>
+                        <td>{item.storage_location}</td>
+                        <td>{item.quantity} шт.</td>
+                        <td>{item.min_quantity} шт.</td>
+                        <td className={item.quantity <= item.min_quantity ? 'low-stock' : ''}>
+                          {item.quantity <= item.min_quantity ? '⚠️ Низкий остаток' : 'Норма'}
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={6}>Ничего не найдено</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
 
-          <div className="warehouse-stock-table">
-            <table>
-              <thead>
-                <tr>
-                  <th>Деталь / Бренд</th>
-                  <th>Артикул</th>
-                  <th>Ячейка</th>
-                  <th>Остаток</th>
-                  <th>Мин.</th>
-                  <th>Статус</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  <tr>
-                    <td colSpan={6}>Загрузка остатков...</td>
-                  </tr>
-                ) : filteredItems.length > 0 ? (
-                  filteredItems.map(item => (
-                    <tr key={item.id}>
-                      <td>
-                        <div>{item.name}</div>
-                        <div className="item-brand">{item.brand}</div>
-                      </td>
-                      <td>{item.part_number}</td>
-                      <td>{item.storage_location}</td>
-                      <td>{item.quantity} шт.</td>
-                      <td>{item.min_quantity} шт.</td>
-                      <td className={item.quantity <= item.min_quantity ? 'low-stock' : ''}>
-                        {item.quantity <= item.min_quantity ? '⚠️ Низкий остаток' : 'Норма'}
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={6}>Ничего не найдено</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+          <div className="modal-actions">
+            <button className="secondary-btn" onClick={() => setShowAddItemModal(true)}>➕ ДОБАВИТЬ ПОЗИЦИЮ</button>
+            <button className="primary-btn">➕ ЗАКАЗАТЬ У ПОСТАВЩИКА</button>
           </div>
         </div>
-
-        <div className="modal-actions">
-          <button className="secondary-btn" onClick={() => setShowAddItemModal(true)}>➕ ДОБАВИТЬ ПОЗИЦИЮ</button>
-          <button className="primary-btn">➕ ЗАКАЗАТЬ У ПОСТАВЩИКА</button>
-        </div>
       </div>
-    </div>
 
-    {showAddItemModal && (
-      <AddWarehouseItemModal
-        isOpen={showAddItemModal}
-        onClose={() => setShowAddItemModal(false)}
-        onItemAdded={() => loadWarehouseStock()} // Перезагружаем список после добавления
-      />
-    )}
-  </div>
+      {showAddItemModal && (
+        <AddWarehouseItemModal
+          isOpen={showAddItemModal}
+          onClose={() => setShowAddItemModal(false)}
+          onItemAdded={() => loadWarehouseStock()} // Перезагружаем список после добавления
+        />
+      )}
+    </>
   );
 };
 
