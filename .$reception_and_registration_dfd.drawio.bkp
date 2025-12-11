@@ -1,0 +1,168 @@
+<mxfile host="app.diagrams.net" modified="2025-11-30T10:00:00.000Z" agent="5.0" etag="1" version="24.7.17" type="device">
+  <diagram name="DFD - Приёмка и регистрация" id="reception-dfd">
+    <mxGraphModel dx="1422" dy="794" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- Заголовок -->
+        <mxCell id="dfd-title" value="Рисунок 2.1 – Детальная диаграмма потоков данных (DFD) процесса &quot;Приёмка и регистрация&quot;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="150" y="30" width="800" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- Внешние сущности -->
+        <mxCell id="external-client" value="Клиент" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;fontStyle=1;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="50" y="200" width="100" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="external-parts-supplier" value="Поставщик
+запчастей" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;fontStyle=1;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="50" y="350" width="100" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="external-system" value="Другие системы" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;fontStyle=1;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="1019" y="350" width="100" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- Процесс 1.1: Приемка -->
+        <mxCell id="process-reception" value="1.1
+Приемка" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;fontStyle=1;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="300" y="200" width="100" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- Процесс 1.2: Регистрация автомобиля -->
+        <mxCell id="process-reg-car" value="1.2
+Регистрация
+автомобиля" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;fontStyle=1;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="500" y="200" width="100" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- Процесс 1.3: Регистрация клиента -->
+        <mxCell id="process-reg-client" value="1.3
+Регистрация
+клиента" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;fontStyle=1;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="300" y="350" width="100" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- Процесс 1.4: Создание заказа -->
+        <mxCell id="process-create-order" value="1.4
+Создание
+заказа" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;fontStyle=1;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="700" y="200" width="100" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- Хранилище данных 1: Информация о клиенте -->
+        <mxCell id="ds1" value="DS1
+Информация
+о клиенте" style="shape=cylinder;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=12;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="300" y="500" width="60" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- Хранилище данных 2: Информация об автомобиле -->
+        <mxCell id="ds2" value="DS2
+Информация
+об автомобиле" style="shape=cylinder;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=12;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="530" y="500" width="60" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- Хранилище данных 3: Заказы -->
+        <mxCell id="ds3" value="DS3
+Заказы" style="shape=cylinder;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=12;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="730" y="500" width="60" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- Входы и исходящие потоки -->
+        <mxCell id="flow1" value="1. Запрос на
+приемку" style="endArrow=classic;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;strokeWidth=2;fontSize=12;" edge="1" parent="1" source="external-client" target="process-reception">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="50" y="650" as="sourcePoint" />
+            <mxPoint x="100" y="600" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="flow2" value="2. Запчасти" style="endArrow=classic;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;strokeWidth=2;fontSize=12;" edge="1" parent="1" source="external-parts-supplier" target="process-reception">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="150" y="380" as="sourcePoint" />
+            <mxPoint x="300" y="380" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="flow3" value="3. Информация
+о клиенте" style="endArrow=classic;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;strokeWidth=2;fontSize=12;" edge="1" parent="1" source="process-reception" target="process-reg-client">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="400" y="230" as="sourcePoint" />
+            <mxPoint x="300" y="350" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="flow4" value="4. Информация
+об автомобиле" style="endArrow=classic;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;strokeWidth=2;fontSize=12;" edge="1" parent="1" source="process-reception" target="process-reg-car">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="400" y="230" as="sourcePoint" />
+            <mxPoint x="500" y="230" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="flow5" value="5. Регистрация
+автомобиля" style="endArrow=classic;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;strokeWidth=2;fontSize=12;" edge="1" parent="1" source="process-reg-car" target="process-create-order">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="600" y="230" as="sourcePoint" />
+            <mxPoint x="700" y="230" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="flow6" value="6. Созданный
+заказ" style="endArrow=classic;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;strokeWidth=2;fontSize=12;" edge="1" parent="1" source="process-create-order" target="external-system">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="800" y="230" as="sourcePoint" />
+            <mxPoint x="1020" y="380" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="flow7" value="7. Информация
+о клиенте" style="endArrow=classic;html=1;entryX=1;entryY=0;entryDx=0;entryDy=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;strokeWidth=2;fontSize=12;" edge="1" parent="1" source="process-reg-client" target="ds1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="300" y="410" as="sourcePoint" />
+            <mxPoint x="330" y="500" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="flow8" value="8. Информация
+об автомобиле" style="endArrow=classic;html=1;entryX=1;entryY=0;entryDx=0;entryDy=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;strokeWidth=2;fontSize=12;" edge="1" parent="1" source="process-reg-car" target="ds2">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="500" y="260" as="sourcePoint" />
+            <mxPoint x="560" y="500" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="flow9" value="9. Заказ" style="endArrow=classic;html=1;entryX=1;entryY=0;entryDx=0;entryDy=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;strokeWidth=2;fontSize=12;" edge="1" parent="1" source="process-create-order" target="ds3">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="700" y="260" as="sourcePoint" />
+            <mxPoint x="760" y="500" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="flow10" value="10. Существующий
+клиент" style="endArrow=classic;html=1;entryX=1;entryY=0.5;entryDx=0;entryDy=0;strokeWidth=2;fontSize=12;" edge="1" parent="1" target="process-create-order">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="330" y="540" as="sourcePoint" />
+            <mxPoint x="700" y="260" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="flow11" value="11. Существующий
+автомобиль" style="endArrow=classic;html=1;entryX=1;entryY=0.5;entryDx=0;entryDy=0;strokeWidth=2;fontSize=12;" edge="1" parent="1" target="process-create-order">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="560" y="540" as="sourcePoint" />
+            <mxPoint x="700" y="260" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Легенда -->
+        <mxCell id="legend" value="&lt;b&gt;Легенда:&lt;/b&gt;&lt;br&gt;Процесс: Прямоугольник с закругленными углами&lt;br&gt;Хранилище данных: Цилиндр&lt;br&gt;Внешняя сущность: Овал&lt;br&gt;Поток данных: Стрелка с подписью&lt;br&gt;&lt;br&gt;Нумерация процессов соответствует уровням декомпозиции" style="text;html=1;resizable=0;points=[];autosize=1;align=left;verticalAlign=top;spacingTop=-4;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="50" y="50" width="300" height="100" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

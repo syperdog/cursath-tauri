@@ -3,6 +3,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { User } from '../types/user';
 
 import './AdminDashboard.css';
+import ServicesReferenceModal from './ServicesReferenceModal';
 
 interface AdminDashboardProps {
   user: User;
@@ -10,7 +11,7 @@ interface AdminDashboardProps {
 }
 
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
-  const [activeTab, setActiveTab] = useState<'users' | 'settings' | 'logs'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'settings' | 'logs' | 'services'>('users');
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -92,7 +93,17 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
   const handleDeleteUser = async (userId: number) => {
     if (window.confirm('Вы уверены, что хотите удалить этого сотрудника?')) {
       try {
-        await invoke('delete_user', { userId });
+        // Получаем токен сессии из localStorage
+        const sessionToken = localStorage.getItem('sessionToken');
+        if (!sessionToken) {
+          alert('Сессия не найдена. Пожалуйста, войдите в систему.');
+          return;
+        }
+
+        await invoke('delete_user', {
+          sessionToken,
+          userId
+        });
         // Обновляем список пользователей
         const response: User[] = await invoke('get_all_users');
         setUsers(response);
@@ -106,9 +117,17 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
   const handleSubmitUser = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      // Получаем токен сессии из localStorage
+      const sessionToken = localStorage.getItem('sessionToken');
+      if (!sessionToken) {
+        alert('Сессия не найдена. Пожалуйста, войдите в систему.');
+        return;
+      }
+
       // Обновляем/создаем пользователя
       if (editingUser) {
         await invoke('update_user', {
+          sessionToken,
           user_id: editingUser.id,
           user_data: {
             ...newUserData,
@@ -118,6 +137,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
         });
       } else {
         await invoke('create_user', {
+          sessionToken,
           user_data: newUserData
         });
       }
@@ -172,6 +192,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
               onClick={() => setActiveTab('logs')}
             >
               Журнал событий
+            </button>
+            <button
+              className={activeTab === 'services' ? 'active' : ''}
+              onClick={() => setActiveTab('services')}
+            >
+              Справочник услуг
             </button>
 
             <div className="role-preview">
@@ -351,12 +377,18 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
                 <h2>Журнал событий</h2>
                 <div className="logs-controls">
                   <select id="log-filter">
-                    <option>Все события</option>
-                    <option>Вход</option>
-                    <option>Ошибки</option>
-                    <option>Изменения</option>
+                    <option value="Все события">Все события</option>
+                    <option value="Login">Вход</option>
+                    <option value="Create_Order">Создание заказа</option>
+                    <option value="Update_Order_Status">Изменение статуса заказа</option>
+                    <option value="Create_User">Создание пользователя</option>
+                    <option value="Update_User">Изменение пользователя</option>
+                    <option value="Delete_User">Удаление пользователя</option>
+                    <option value="Service_Creation">Создание услуги</option>
+                    <option value="Service_Update">Изменение услуги</option>
+                    <option value="Service_Delete">Удаление услуги</option>
                   </select>
-                  <input type="text" placeholder="Поиск..." id="log-search" />
+                  <input type="text" placeholder="Поиск по описанию..." id="log-search" />
                   <button onClick={async () => {
                     try {
                       setLogsLoading(true);
@@ -388,15 +420,17 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
                       <th>Пользователь</th>
                       <th>Событие</th>
                       <th>Детали</th>
+                      <th>IP-адрес</th>
                     </tr>
                   </thead>
                   <tbody>
                     {logs.map((log, index) => (
-                      <tr key={index}>
+                      <tr key={log.id || index}>
                         <td>{log.timestamp}</td>
                         <td>{log.user}</td>
                         <td>{log.event}</td>
                         <td>{log.details}</td>
+                        <td>{log.ip}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -406,6 +440,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
               <div className="logs-actions">
                 <button className="export-btn">📥 Экспорт в CSV</button>
               </div>
+            </div>
+          )}
+
+          {activeTab === 'services' && (
+            <div className="services-section">
+              <h2>Справочник услуг</h2>
+              <ServicesReferenceModal
+                isOpen={true}
+                onClose={() => setActiveTab('users')}
+              />
             </div>
           )}
         </div>

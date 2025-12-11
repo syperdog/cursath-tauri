@@ -69,6 +69,7 @@ const MasterDashboard: React.FC = () => {
   const [selectedCarForNewOrder, setSelectedCarForNewOrder] = useState<Car | null>(null);
 
   const [showArchive, setShowArchive] = useState(false);
+  const [archivedOrders, setArchivedOrders] = useState<Order[]>([]);
   const [archiveFilter, setArchiveFilter] = useState<{ periodStart: string, periodEnd: string, status: string, search: string }>({
     periodStart: '2024-01-01',
     periodEnd: new Date().toISOString().split('T')[0],
@@ -462,13 +463,34 @@ const MasterDashboard: React.FC = () => {
 
 
   // Функции для работы с архивом
-  const toggleArchiveView = () => {
-    setShowArchive(!showArchive);
+  const toggleArchiveView = async () => {
+    const newShowArchive = !showArchive;
+    setShowArchive(newShowArchive);
+
+    // Загружаем архивные заказы при открытии вкладки архива
+    if (newShowArchive) {
+      await loadArchivedOrders();
+    }
+  };
+
+  // Загрузка архивных заказов
+  const loadArchivedOrders = async () => {
+    try {
+      const archivedOrdersData = await invoke<Order[]>('get_archived_orders', {
+        statusFilter: archiveFilter.status,
+        periodStart: archiveFilter.periodStart,
+        periodEnd: archiveFilter.periodEnd,
+        searchQuery: archiveFilter.search
+      });
+      setArchivedOrders(archivedOrdersData);
+    } catch (error) {
+      console.error('Error loading archived orders:', error);
+    }
   };
 
   // Фильтрация архивных заказов (в реальном приложении это было бы на бэкенде)
   const getFilteredArchiveOrders = () => {
-    return orders.filter(order => {
+    return archivedOrders.filter(order => {
       if (archiveFilter.status !== 'All' && order.status !== archiveFilter.status) {
         return false;
       }
@@ -681,13 +703,21 @@ const MasterDashboard: React.FC = () => {
                 <input
                   type="date"
                   value={archiveFilter.periodStart}
-                  onChange={(e) => setArchiveFilter({...archiveFilter, periodStart: e.target.value})}
+                  onChange={(e) => {
+                    setArchiveFilter({...archiveFilter, periodStart: e.target.value});
+                    // Перезагружаем архивные заказы при изменении фильтра
+                    setTimeout(() => loadArchivedOrders(), 0);
+                  }}
                 />
                 <span> - </span>
                 <input
                   type="date"
                   value={archiveFilter.periodEnd}
-                  onChange={(e) => setArchiveFilter({...archiveFilter, periodEnd: e.target.value})}
+                  onChange={(e) => {
+                    setArchiveFilter({...archiveFilter, periodEnd: e.target.value});
+                    // Перезагружаем архивные заказы при изменении фильтра
+                    setTimeout(() => loadArchivedOrders(), 0);
+                  }}
                 />
               </div>
 
@@ -695,7 +725,11 @@ const MasterDashboard: React.FC = () => {
                 <label>Статус:</label>
                 <select
                   value={archiveFilter.status}
-                  onChange={(e) => setArchiveFilter({...archiveFilter, status: e.target.value})}>
+                  onChange={(e) => {
+                    setArchiveFilter({...archiveFilter, status: e.target.value});
+                    // Перезагружаем архивные заказы при изменении фильтра
+                    setTimeout(() => loadArchivedOrders(), 0);
+                  }}>
                   <option value="All">Все</option>
                   <option value="Closed">Закрыт</option>
                   <option value="Cancelled">Отменен</option>
@@ -707,7 +741,11 @@ const MasterDashboard: React.FC = () => {
                   type="text"
                   placeholder="Поиск: клиент, авто..."
                   value={archiveFilter.search}
-                  onChange={(e) => setArchiveFilter({...archiveFilter, search: e.target.value})}
+                  onChange={(e) => {
+                    setArchiveFilter({...archiveFilter, search: e.target.value});
+                    // Перезагружаем архивные заказы при изменении фильтра
+                    setTimeout(() => loadArchivedOrders(), 0);
+                  }}
                 />
                 <button className="search-btn">🔍</button>
               </div>

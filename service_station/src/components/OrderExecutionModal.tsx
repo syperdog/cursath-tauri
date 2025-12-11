@@ -52,9 +52,10 @@ interface Order {
 interface OrderExecutionModalProps {
   orderId: number;
   onClose: () => void;
+  onOrderComplete?: () => void; // Callback to notify parent when order is completed
 }
 
-const OrderExecutionModal: React.FC<OrderExecutionModalProps> = ({ orderId, onClose }) => {
+const OrderExecutionModal: React.FC<OrderExecutionModalProps> = ({ orderId, onClose, onOrderComplete }) => {
   const [order, setOrder] = useState<Order | null>(null);
   const [works, setWorks] = useState<WorkItem[]>([]);
   const [parts, setParts] = useState<Part[]>([]);
@@ -166,12 +167,18 @@ const OrderExecutionModal: React.FC<OrderExecutionModalProps> = ({ orderId, onCl
 
     if (allCompleted) {
       try {
-        // Обновляем статус заказа
+        // Обновляем статус заказа на 'Ready' - готов к выдаче, ожидает мастера
         await invoke('update_order_status', {
           orderId: order!.id,
           newStatus: 'Ready' // заказ готов к выдаче
         });
         alert(`Заказ ${orderId} завершен и готов к выдаче!`);
+
+        // Вызываем обратный вызов для обновления списка заказов в родительском компоненте
+        if (onOrderComplete) {
+          onOrderComplete();
+        }
+
         onClose();
       } catch (error) {
         console.error('Error updating order status:', error);

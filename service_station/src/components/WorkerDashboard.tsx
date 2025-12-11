@@ -217,9 +217,15 @@ const WorkerDashboard: React.FC = () => {
       </main>
 
       {showOrderExecutionModal && selectedOrder && (
-        <OrderExecutionModal 
-          orderId={selectedOrder.id} 
-          onClose={() => setShowOrderExecutionModal(false)} 
+        <OrderExecutionModal
+          orderId={selectedOrder.id}
+          onClose={() => setShowOrderExecutionModal(false)}
+          onOrderComplete={async () => {
+            // Обновляем список заказов после завершения заказа
+            if (user) {
+              await loadWorkerOrders(user.id);
+            }
+          }}
         />
       )}
     </div>

@@ -1,0 +1,249 @@
+<mxfile host="Electron" agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/29.0.3 Chrome/140.0.7339.249 Electron/38.7.2 Safari/537.36" version="29.0.3">
+  <diagram id="KODA_ERD" name="KODA Database Structure">
+    <mxGraphModel dx="2357" dy="2602" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="style_table" value="" style="swimlane;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;rounded=1;shadow=0;glass=0;sketch=0;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="1" vertex="1">
+          <mxGeometry width="220" as="geometry" />
+        </mxCell>
+        <mxCell id="style_row" value="" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry width="220" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="style_pk" value="" style="shape=partialRectangle;top=0;left=0;bottom=0;right=0;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[];portConstraint=eastwest;part=1;html=1;fontStyle=1;fontColor=#B80000;" parent="1" vertex="1">
+          <mxGeometry width="30" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="table_users" value="users" style="swimlane;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="1" vertex="1">
+          <mxGeometry x="670" y="-258" width="240" height="238" as="geometry" />
+        </mxCell>
+        <mxCell id="users_id" value="id (PK): integer" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;fontStyle=1;" parent="table_users" vertex="1">
+          <mxGeometry y="30" width="240" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="users_cols" value="full_name: varchar&#xa;role: user_role&#xa;login: varchar&#xa;password_hash: varchar&#xa;pin_code: varchar&#xa;status: user_status&#xa;created_at: timestamp" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" parent="table_users" vertex="1">
+          <mxGeometry y="56" width="240" height="182" as="geometry" />
+        </mxCell>
+        <mxCell id="table_logs" value="system_logs" style="swimlane;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;" parent="1" vertex="1">
+          <mxGeometry x="920" y="-440" width="240" height="160" as="geometry" />
+        </mxCell>
+        <mxCell id="logs_id" value="id (PK): integer" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;fontStyle=1;" parent="table_logs" vertex="1">
+          <mxGeometry y="30" width="240" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="logs_cols" value="user_id: integer (FK)&#xa;event_type: varchar&#xa;description: text&#xa;ip_address: varchar&#xa;created_at: timestamp" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" parent="table_logs" vertex="1">
+          <mxGeometry y="56" width="240" height="104" as="geometry" />
+        </mxCell>
+        <mxCell id="table_clients" value="clients" style="swimlane;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" parent="1" vertex="1">
+          <mxGeometry x="260" y="-10" width="220" height="134" as="geometry" />
+        </mxCell>
+        <mxCell id="clients_id" value="id (PK): integer" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;fontStyle=1;" parent="table_clients" vertex="1">
+          <mxGeometry y="30" width="220" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="clients_cols" value="full_name: varchar&#xa;phone: varchar&#xa;address: varchar&#xa;created_at: timestamp" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" parent="table_clients" vertex="1">
+          <mxGeometry y="56" width="220" height="78" as="geometry" />
+        </mxCell>
+        <mxCell id="table_cars" value="cars" style="swimlane;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" parent="1" vertex="1">
+          <mxGeometry x="260" y="336" width="220" height="264" as="geometry" />
+        </mxCell>
+        <mxCell id="cars_id" value="id (PK): integer" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;fontStyle=1;" parent="table_cars" vertex="1">
+          <mxGeometry y="30" width="220" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="cars_cols" value="client_id: integer (FK)&#xa;vin: varchar&#xa;license_plate: varchar&#xa;make: varchar&#xa;model: varchar&#xa;production_year: int&#xa;mileage: int&#xa;last_visit_date: timestamp&#xa;created_at: timestamp" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" parent="table_cars" vertex="1">
+          <mxGeometry y="56" width="220" height="208" as="geometry" />
+        </mxCell>
+        <mxCell id="table_orders" value="orders" style="swimlane;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" parent="1" vertex="1">
+          <mxGeometry x="660" y="200" width="240" height="316" as="geometry" />
+        </mxCell>
+        <mxCell id="orders_id" value="id (PK): integer" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;fontStyle=1;" parent="table_orders" vertex="1">
+          <mxGeometry y="30" width="240" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="orders_cols" value="client_id: integer (FK)&#xa;car_id: integer (FK)&#xa;master_id: integer (FK)&#xa;worker_id: integer (FK)&#xa;status: order_status&#xa;complaint: text&#xa;current_mileage: int&#xa;prepayment: numeric&#xa;total_amount: numeric&#xa;created_at: timestamp&#xa;completed_at: timestamp" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" parent="table_orders" vertex="1">
+          <mxGeometry y="56" width="240" height="260" as="geometry" />
+        </mxCell>
+        <mxCell id="table_defects" value="order_defects" style="swimlane;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" parent="1" vertex="1">
+          <mxGeometry x="660" y="600" width="240" height="186" as="geometry" />
+        </mxCell>
+        <mxCell id="defects_id" value="id (PK): integer" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;fontStyle=1;" parent="table_defects" vertex="1">
+          <mxGeometry y="30" width="240" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="defects_cols" value="order_id: integer (FK)&#xa;diagnostician_id: integer (FK)&#xa;defect_type_id: integer (FK)&#xa;defect_description: varchar&#xa;diagnostician_comment: text&#xa;is_confirmed: boolean" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" parent="table_defects" vertex="1">
+          <mxGeometry y="56" width="240" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="table_works" value="order_works" style="swimlane;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" parent="1" vertex="1">
+          <mxGeometry x="1190" y="-10" width="240" height="316" as="geometry" />
+        </mxCell>
+        <mxCell id="works_id" value="id (PK): integer" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;fontStyle=1;" parent="table_works" vertex="1">
+          <mxGeometry y="30" width="240" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="works_cols" value="order_id: integer (FK)&#xa;service_id: integer (FK)&#xa;worker_id: integer (FK)&#xa;defect_id: integer (FK)&#xa;service_name_snapshot: varchar&#xa;price: numeric&#xa;norm_hours: numeric&#xa;status: work_status&#xa;started_at: timestamp&#xa;finished_at: timestamp&#xa;is_confirmed: boolean" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" parent="table_works" vertex="1">
+          <mxGeometry y="56" width="240" height="260" as="geometry" />
+        </mxCell>
+        <mxCell id="table_parts" value="order_parts" style="swimlane;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" parent="1" vertex="1">
+          <mxGeometry x="1000" y="400" width="240" height="342" as="geometry" />
+        </mxCell>
+        <mxCell id="parts_id" value="id (PK): integer" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;fontStyle=1;" parent="table_parts" vertex="1">
+          <mxGeometry y="30" width="240" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="parts_cols" value="order_id: integer (FK)&#xa;warehouse_item_id: int (FK)&#xa;issued_by: integer (FK)&#xa;defect_id: integer (FK)&#xa;part_name_snapshot: varchar&#xa;brand: varchar&#xa;supplier: varchar&#xa;quantity: int&#xa;price_per_unit: numeric&#xa;source_type: part_source&#xa;is_issued: boolean&#xa;issued_at: timestamp&#xa;is_confirmed: boolean" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" parent="table_parts" vertex="1">
+          <mxGeometry y="56" width="240" height="286" as="geometry" />
+        </mxCell>
+        <mxCell id="table_warehouse" value="warehouse" style="swimlane;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" parent="1" vertex="1">
+          <mxGeometry x="1420" y="400" width="220" height="212" as="geometry" />
+        </mxCell>
+        <mxCell id="wh_id" value="id (PK): integer" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;fontStyle=1;" parent="table_warehouse" vertex="1">
+          <mxGeometry y="30" width="220" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="wh_cols" value="name: varchar&#xa;brand: varchar&#xa;article: varchar&#xa;location_cell: varchar&#xa;quantity: int&#xa;min_quantity: int&#xa;purchase_price: numeric&#xa;selling_price: numeric" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" parent="table_warehouse" vertex="1">
+          <mxGeometry y="56" width="220" height="156" as="geometry" />
+        </mxCell>
+        <mxCell id="table_services" value="services_reference" style="swimlane;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" parent="1" vertex="1">
+          <mxGeometry x="1550" y="20" width="220" height="108" as="geometry" />
+        </mxCell>
+        <mxCell id="srv_id" value="id (PK): integer" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;fontStyle=1;" parent="table_services" vertex="1">
+          <mxGeometry y="30" width="220" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="srv_cols" value="name: varchar&#xa;base_price: numeric&#xa;norm_hours: numeric" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" parent="table_services" vertex="1">
+          <mxGeometry y="56" width="220" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="table_dtypes" value="defect_types" style="swimlane;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" parent="1" vertex="1">
+          <mxGeometry x="661" y="900" width="240" height="108" as="geometry" />
+        </mxCell>
+        <mxCell id="dtypes_id" value="id (PK): integer" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;fontStyle=1;" parent="table_dtypes" vertex="1">
+          <mxGeometry y="30" width="240" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="dtypes_cols" value="node_id: integer (FK)&#xa;name: varchar&#xa;description: text" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" parent="table_dtypes" vertex="1">
+          <mxGeometry y="56" width="240" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="table_dnodes" value="defect_nodes" style="swimlane;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" parent="1" vertex="1">
+          <mxGeometry x="371" y="900" width="220" height="108" as="geometry" />
+        </mxCell>
+        <mxCell id="dnodes_id" value="id (PK): integer" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;fontStyle=1;" parent="table_dnodes" vertex="1">
+          <mxGeometry y="30" width="220" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="dnodes_cols" value="name: varchar&#xa;description: text" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" parent="table_dnodes" vertex="1">
+          <mxGeometry y="56" width="220" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="table_dts" value="defect_type_services" style="swimlane;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" parent="1" vertex="1">
+          <mxGeometry x="991" y="913" width="250" height="82" as="geometry" />
+        </mxCell>
+        <mxCell id="dts_id" value="id (PK): integer" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;fontStyle=1;" parent="table_dts" vertex="1">
+          <mxGeometry y="30" width="250" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="dts_cols" value="defect_type_id: integer (FK)&lt;br&gt;service_id: integer (FK)&lt;div&gt;&lt;br&gt;&lt;/div&gt;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" parent="table_dts" vertex="1">
+          <mxGeometry y="56" width="250" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="rel_cars_clients" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=none;startArrow=ERoneToMany;exitX=0.5;exitY=0;entryX=0.5;entryY=1;" parent="1" source="table_cars" target="table_clients" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel_orders_clients" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=none;startArrow=ERoneToMany;exitX=0;exitY=0.25;entryX=1;entryY=0.5;" parent="1" source="table_orders" target="table_clients" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="620" y="279" />
+              <mxPoint x="620" y="47" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel_orders_cars" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=none;startArrow=ERoneToMany;exitX=0;exitY=0.5;entryX=1;entryY=0.5;" parent="1" source="table_orders" target="table_cars" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel_orders_users_m" value="Master" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=none;startArrow=ERoneToMany;exitX=0.75;exitY=0;exitDx=0;exitDy=0;" parent="1" source="table_orders" target="users_cols" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="840" y="50" />
+              <mxPoint x="790" y="50" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel_orders_users_w" value="Worker" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=none;startArrow=ERoneToMany;exitX=0.25;exitY=0;" parent="1" source="table_orders" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="720" y="-21" />
+            </Array>
+            <mxPoint x="720" y="-21" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel_logs_users" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=none;startArrow=ERoneToMany;entryX=1.005;entryY=0.247;entryDx=0;entryDy=0;entryPerimeter=0;exitX=0.583;exitY=0.982;exitDx=0;exitDy=0;exitPerimeter=0;" parent="1" source="logs_cols" target="users_cols" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1040" y="-380" as="sourcePoint" />
+            <mxPoint x="840" y="-92" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="1060" y="-157" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel_works_orders" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=none;startArrow=ERoneToMany;exitX=0;exitY=0.5;entryX=1;entryY=0.25;" parent="1" source="table_works" target="table_orders" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel_parts_orders" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=none;startArrow=ERoneToMany;exitX=0;exitY=0.25;entryX=1;entryY=0.75;" parent="1" source="table_parts" target="table_orders" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel_defects_orders" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=none;startArrow=ERoneToMany;exitX=0.5;exitY=0;entryX=0.5;entryY=1;" parent="1" source="table_defects" target="table_orders" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel_defects_users" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=none;startArrow=ERoneToMany;exitX=0;exitY=0.5;entryX=0.002;entryY=0.134;entryDx=0;entryDy=0;entryPerimeter=0;" parent="1" source="table_defects" target="users_cols" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="590" y="693" />
+              <mxPoint x="590" y="-180" />
+              <mxPoint x="671" y="-180" />
+            </Array>
+            <mxPoint x="630" y="-250" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel_works_srv" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=none;startArrow=ERoneToMany;exitX=1;exitY=0.25;entryX=0;entryY=0.5;" parent="1" source="table_works" target="table_services" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1550" y="69" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel_works_users" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=none;startArrow=ERoneToMany;exitX=0.5;exitY=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="table_works" target="users_cols" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1310" y="-110" />
+              <mxPoint x="910" y="-110" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel_parts_wh" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=none;startArrow=ERoneToMany;exitX=1;exitY=0.25;entryX=0;entryY=0.5;" parent="1" source="table_parts" target="table_warehouse" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel_parts_users" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=none;startArrow=ERoneToMany;exitX=0.5;exitY=0;entryX=1.01;entryY=0.78;entryDx=0;entryDy=0;entryPerimeter=0;exitDx=0;exitDy=0;" parent="1" source="table_parts" target="users_cols" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1120" y="320" />
+              <mxPoint x="1090" y="320" />
+              <mxPoint x="1090" y="-60" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel_defects_dtypes" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=none;startArrow=ERoneToMany;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" parent="1" source="table_defects" target="table_dtypes" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel_dtypes_dnodes" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=none;startArrow=ERoneToMany;exitX=0;exitY=0.5;entryX=1;entryY=0.5;" parent="1" source="table_dtypes" target="table_dnodes" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel_dts_dtypes" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=none;startArrow=ERoneToMany;exitX=0;exitY=0.5;entryX=1;entryY=0.5;" parent="1" source="table_dts" target="table_dtypes" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel_dts_srv" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=none;startArrow=ERoneToMany;exitX=1;exitY=0.5;entryX=0.5;entryY=1;" parent="1" source="table_dts" target="table_services" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1241" y="960" />
+              <mxPoint x="1660" y="960" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel_parts_defects" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=none;startArrow=ERoneToMany;exitX=0;exitY=0.75;entryX=1;entryY=0.25;" parent="1" source="table_parts" target="table_defects" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel_works_defects" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=none;startArrow=ERoneToMany;exitX=0.544;exitY=0.999;entryX=0.693;entryY=1.027;entryDx=0;entryDy=0;entryPerimeter=0;exitDx=0;exitDy=0;exitPerimeter=0;" parent="1" source="works_cols" target="defects_cols" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1320" y="840" />
+              <mxPoint x="826" y="840" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

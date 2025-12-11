@@ -539,6 +539,122 @@ async fn get_orders_for_worker(worker_id: i32, state: tauri::State<'_, Database>
     Ok(orders)
 }
 
+// Service-DefectType relationship functions
+#[tauri::command]
+async fn get_service_defect_types(service_id: i32, state: tauri::State<'_, Database>) -> Result<Vec<DefectType>, String> {
+    let query = "SELECT dt.id, dt.node_id, dn.name as node_name, dt.name, dt.description
+                 FROM defect_type_services dts
+                 JOIN defect_types dt ON dts.defect_type_id = dt.id
+                 JOIN defect_nodes dn ON dt.node_id = dn.id
+                 WHERE dts.service_id = $1
+                 ORDER BY dn.name, dt.name";
+    let rows = sqlx::query(query)
+        .bind(service_id)
+        .fetch_all(&state.pool)
+        .await
+        .map_err(|e| format!("Database error: {}", e))?;
+
+    let mut defect_types = Vec::new();
+    for row in rows {
+        defect_types.push(DefectType {
+            id: row.get("id"),
+            node_id: row.get("node_id"),
+            node_name: row.get("node_name"),
+            name: row.get("name"),
+            description: row.get("description"),
+        });
+    }
+
+    Ok(defect_types)
+}
+
+#[tauri::command]
+async fn link_service_to_defect_type(
+    service_id: i32,
+    defect_type_ids: Vec<i32>,
+    state: tauri::State<'_, Database>
+) -> Result<String, String> {
+    let mut tx = state.pool.begin().await.map_err(|e| format!("Database transaction error: {}", e))?;
+
+    // Удаляем существующие связи для этой услуги
+    let delete_query = "DELETE FROM defect_type_services WHERE service_id = $1";
+    sqlx::query(delete_query)
+        .bind(service_id)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| format!("Database error deleting old links: {}", e))?;
+
+    // Создаем новые связи
+    for defect_type_id in &defect_type_ids {
+        let insert_query = "INSERT INTO defect_type_services (defect_type_id, service_id) VALUES ($1, $2)";
+        sqlx::query(insert_query)
+            .bind(defect_type_id)
+            .bind(service_id)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| format!("Database error linking service to defect type: {}", e))?;
+    }
+
+    tx.commit()
+        .await
+        .map_err(|e| format!("Database transaction commit error: {}", e))?;
+
+    Ok(format!("Услуга {} связана с {} типами неисправностей", service_id, defect_type_ids.len()))
+}
+
+#[tauri::command]
+async fn get_all_defect_types_grouped(state: tauri::State<'_, Database>) -> Result<Vec<DefectNodeWithTypes>, String> {
+    // Сначала получим все узлы
+    let node_query = "SELECT id, name, description FROM defect_nodes ORDER BY name";
+    let node_rows = sqlx::query(node_query)
+        .fetch_all(&state.pool)
+        .await
+        .map_err(|e| format!("Database error: {}", e))?;
+
+    let mut nodes_with_types = Vec::new();
+    for node_row in node_rows {
+        let node_id: i32 = node_row.get("id");
+        let node_name: String = node_row.get("name");
+        let node_description: String = node_row.get("description");
+
+        // Затем получим типы неисправностей для каждого узла
+        let type_query = "SELECT id, name, description FROM defect_types WHERE node_id = $1 ORDER BY name";
+        let type_rows = sqlx::query(type_query)
+            .bind(node_id)
+            .fetch_all(&state.pool)
+            .await
+            .map_err(|e| format!("Database error: {}", e))?;
+
+        let mut defect_types = Vec::new();
+        for type_row in type_rows {
+            defect_types.push(DefectType {
+                id: type_row.get("id"),
+                node_id,
+                node_name: node_name.clone(), // Временно, будет перезаписан ниже, но нужен для типизации
+                name: type_row.get("name"),
+                description: type_row.get("description"),
+            });
+        }
+
+        nodes_with_types.push(DefectNodeWithTypes {
+            node_id,
+            node_name,
+            node_description,
+            defect_types,
+        });
+    }
+
+    Ok(nodes_with_types)
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+struct DefectNodeWithTypes {
+    node_id: i32,
+    node_name: String,
+    node_description: String,
+    defect_types: Vec<DefectType>,
+}
+
 #[tauri::command]
 async fn get_archived_orders(
     status_filter: String,
@@ -548,7 +664,7 @@ async fn get_archived_orders(
     state: tauri::State<'_, Database>
 ) -> Result<Vec<Order>, String> {
     // Query archived orders based on filters
-    let mut query = "SELECT id, client_id, car_id, master_id, worker_id, status::text, complaint, current_mileage, prepayment::text, total_amount::text, created_at::text, completed_at::text FROM orders WHERE status IN ('Closed', 'Cancelled')";
+    let query = "SELECT id, client_id, car_id, master_id, worker_id, status::text, complaint, current_mileage, prepayment::text, total_amount::text, created_at::text, completed_at::text FROM orders WHERE status IN ('Closed', 'Cancelled')";
     let mut query_builder = sqlx::QueryBuilder::new(query);
 
     // Add status filter if not 'All'
@@ -598,6 +714,206 @@ async fn get_archived_orders(
     }
 
     Ok(orders)
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+struct Service {
+    id: i32,
+    name: String,
+    base_price: String, // DECIMAL as string
+    norm_hours: String, // DECIMAL as string
+}
+
+#[tauri::command]
+async fn get_all_services(state: tauri::State<'_, Database>) -> Result<Vec<Service>, String> {
+    let query = "SELECT id, name, base_price::text, norm_hours::text FROM services_reference ORDER BY name";
+    let rows = sqlx::query(query)
+        .fetch_all(&state.pool)
+        .await
+        .map_err(|e| format!("Database error: {}", e))?;
+
+    let mut services = Vec::new();
+    for row in rows {
+        services.push(Service {
+            id: row.get("id"),
+            name: row.get("name"),
+            base_price: row.get("base_price"),
+            norm_hours: row.get("norm_hours"),
+        });
+    }
+
+    Ok(services)
+}
+
+#[tauri::command]
+async fn create_service(
+    session_token: String,
+    name: String,
+    base_price: f64,
+    norm_hours: f64,
+    state: tauri::State<'_, Database>
+) -> Result<String, String> {
+    // Validate inputs
+    if name.trim().is_empty() {
+        return Err("Название услуги не может быть пустым".to_string());
+    }
+
+    // Получаем информацию о пользователе из сессии
+    let user = {
+        let sessions = SESSIONS.lock().map_err(|_| "Session lock error")?;
+        sessions.get(&session_token).cloned().ok_or("Invalid session token")?
+    };
+
+    // Insert the new service into the database
+    let query = "INSERT INTO services_reference (name, base_price, norm_hours) VALUES ($1, $2::numeric, $3::numeric) RETURNING id";
+    let row = sqlx::query(query)
+        .bind(&name)
+        .bind(base_price)
+        .bind(norm_hours)
+        .fetch_one(&state.pool)
+        .await
+        .map_err(|e| format!("Database error: {}", e))?;
+
+    let new_id: i32 = row.get("id");
+
+    // Логируем создание услуги
+    let log_result = log_event(
+        Some(user.id),
+        "Service_Creation".to_string(),
+        format!("Создана новая услуга '{}' с ID {}", name, new_id),
+        None, // IP-адрес пока не реализован
+        state.clone()
+    ).await;
+
+    if let Err(e) = log_result {
+        eprintln!("Error logging service creation: {}", e);
+    }
+
+    Ok(format!("Услуга успешно создана с ID: {}", new_id))
+}
+
+#[tauri::command]
+async fn update_service(
+    session_token: String,
+    service_id: i32,
+    name: String,
+    base_price: f64,
+    norm_hours: f64,
+    state: tauri::State<'_, Database>
+) -> Result<String, String> {
+    // Validate inputs
+    if name.trim().is_empty() {
+        return Err("Название услуги не может быть пустым".to_string());
+    }
+
+    // Получаем информацию о пользователе из сессии
+    let user = {
+        let sessions = SESSIONS.lock().map_err(|_| "Session lock error")?;
+        sessions.get(&session_token).cloned().ok_or("Invalid session token")?
+    };
+
+    // Get the existing service name for logging
+    let existing_query = "SELECT name FROM services_reference WHERE id = $1";
+    let existing_row = sqlx::query(existing_query)
+        .bind(service_id)
+        .fetch_optional(&state.pool)
+        .await
+        .map_err(|e| format!("Database error: {}", e))?;
+
+    if existing_row.is_none() {
+        return Err(format!("Услуга с ID {} не найдена", service_id));
+    }
+
+    // Update the service in the database
+    let query = "UPDATE services_reference SET name = $1, base_price = $2::numeric, norm_hours = $3::numeric WHERE id = $4";
+    let result = sqlx::query(query)
+        .bind(&name)
+        .bind(base_price)
+        .bind(norm_hours)
+        .bind(service_id)
+        .execute(&state.pool)
+        .await
+        .map_err(|e| format!("Database error: {}", e))?;
+
+    if result.rows_affected() == 0 {
+        return Err(format!("Услуга с ID {} не найдена", service_id));
+    }
+
+    // Логируем изменение услуги
+    let log_result = log_event(
+        Some(user.id),
+        "Service_Update".to_string(),
+        format!("Обновлена услуга с ID {}: '{}' -> '{}'", service_id, existing_row.unwrap().get::<String, _>("name"), name),
+        None, // IP-адрес пока не реализован
+        state.clone()
+    ).await;
+
+    if let Err(e) = log_result {
+        eprintln!("Error logging service update: {}", e);
+    }
+
+    Ok(format!("Услуга с ID {} успешно обновлена", service_id))
+}
+
+#[tauri::command]
+async fn delete_service(session_token: String, service_id: i32, state: tauri::State<'_, Database>) -> Result<String, String> {
+    // First, check if there are any order_works associated with this service
+    let check_query = "SELECT COUNT(*) as count FROM order_works WHERE service_id = $1";
+    let row = sqlx::query(check_query)
+        .bind(service_id)
+        .fetch_one(&state.pool)
+        .await
+        .map_err(|e| format!("Database error: {}", e))?;
+
+    let associated_works_count: i64 = row.get("count");
+    if associated_works_count > 0 {
+        return Err("Невозможно удалить услугу, так как на неё ссылаются заказы".to_string());
+    }
+
+    // Получаем информацию о пользователе из сессии
+    let user = {
+        let sessions = SESSIONS.lock().map_err(|_| "Session lock error")?;
+        sessions.get(&session_token).cloned().ok_or("Invalid session token")?
+    };
+
+    // Get the existing service name for logging
+    let existing_query = "SELECT name FROM services_reference WHERE id = $1";
+    let existing_row = sqlx::query(existing_query)
+        .bind(service_id)
+        .fetch_optional(&state.pool)
+        .await
+        .map_err(|e| format!("Database error: {}", e))?;
+
+    if existing_row.is_none() {
+        return Err(format!("Услуга с ID {} не найдена", service_id));
+    }
+
+    // Delete the service from the database
+    let query = "DELETE FROM services_reference WHERE id = $1";
+    let result = sqlx::query(query)
+        .bind(service_id)
+        .execute(&state.pool)
+        .await
+        .map_err(|e| format!("Database error: {}", e))?;
+
+    if result.rows_affected() == 0 {
+        return Err(format!("Услуга с ID {} не найдена", service_id));
+    }
+
+    // Логируем удаление услуги
+    let log_result = log_event(
+        Some(user.id),
+        "Service_Delete".to_string(),
+        format!("Удалена услуга с ID {}: '{}'", service_id, existing_row.unwrap().get::<String, _>("name")),
+        None, // IP-адрес пока не реализован
+        state.clone()
+    ).await;
+
+    if let Err(e) = log_result {
+        eprintln!("Error logging service deletion: {}", e);
+    }
+
+    Ok(format!("Услуга с ID {} успешно удалена", service_id))
 }
 
 #[tauri::command]
@@ -1042,8 +1358,14 @@ async fn get_all_users(state: tauri::State<'_, Database>) -> Result<Vec<User>, S
 }
 
 #[tauri::command]
-async fn create_user(user_data: User, state: tauri::State<'_, Database>) -> Result<User, String> {
+async fn create_user(session_token: String, user_data: User, state: tauri::State<'_, Database>) -> Result<User, String> {
     use bcrypt::hash;
+
+    // Получаем информацию о пользователе из сессии
+    let user = {
+        let sessions = SESSIONS.lock().map_err(|_| "Session lock error")?;
+        sessions.get(&session_token).cloned().ok_or("Invalid session token")?
+    };
 
     // Hash the password if it exists
     let password_hash = if let Some(password) = &user_data.password_hash {
@@ -1070,6 +1392,19 @@ async fn create_user(user_data: User, state: tauri::State<'_, Database>) -> Resu
 
     let new_id: i32 = row.get("id");
 
+    // Логируем создание пользователя
+    let log_result = log_event(
+        Some(user.id),
+        "Create_User".to_string(),
+        format!("Создан новый пользователь '{}' с ID {}", user_data.full_name, new_id),
+        None, // IP-адрес пока не реализован
+        state.clone()
+    ).await;
+
+    if let Err(e) = log_result {
+        eprintln!("Error logging user creation: {}", e);
+    }
+
     // Return the created user
     Ok(User {
         id: new_id,
@@ -1083,8 +1418,26 @@ async fn create_user(user_data: User, state: tauri::State<'_, Database>) -> Resu
 }
 
 #[tauri::command]
-async fn update_user(user_id: i32, user_data: User, state: tauri::State<'_, Database>) -> Result<String, String> {
+async fn update_user(session_token: String, user_id: i32, user_data: User, state: tauri::State<'_, Database>) -> Result<String, String> {
     use bcrypt::hash;
+
+    // Получаем информацию о пользователе из сессии
+    let session_user = {
+        let sessions = SESSIONS.lock().map_err(|_| "Session lock error")?;
+        sessions.get(&session_token).cloned().ok_or("Invalid session token")?
+    };
+
+    // Получаем существующие данные пользователя для логирования
+    let existing_user_query = "SELECT full_name FROM users WHERE id = $1";
+    let existing_user_row = sqlx::query(existing_user_query)
+        .bind(user_id)
+        .fetch_optional(&state.pool)
+        .await
+        .map_err(|e| format!("Database error: {}", e))?;
+
+    if existing_user_row.is_none() {
+        return Err(format!("Пользователь с ID {} не найден", user_id));
+    }
 
     // Hash the password if it exists
     let password_hash = if let Some(password) = &user_data.password_hash {
@@ -1110,17 +1463,61 @@ async fn update_user(user_id: i32, user_data: User, state: tauri::State<'_, Data
         .await
         .map_err(|e| format!("Database error: {}", e))?;
 
+    // Логируем изменение пользователя
+    let log_result = log_event(
+        Some(session_user.id),
+        "Update_User".to_string(),
+        format!("Изменен пользователь с ID {}: '{}' -> '{}'", user_id, existing_user_row.unwrap().get::<String, _>("full_name"), user_data.full_name),
+        None, // IP-адрес пока не реализован
+        state.clone()
+    ).await;
+
+    if let Err(e) = log_result {
+        eprintln!("Error logging user update: {}", e);
+    }
+
     Ok("User updated successfully".to_string())
 }
 
 #[tauri::command]
-async fn delete_user(user_id: i32, state: tauri::State<'_, Database>) -> Result<String, String> {
+async fn delete_user(session_token: String, user_id: i32, state: tauri::State<'_, Database>) -> Result<String, String> {
+    // Получаем информацию о пользователе из сессии
+    let session_user = {
+        let sessions = SESSIONS.lock().map_err(|_| "Session lock error")?;
+        sessions.get(&session_token).cloned().ok_or("Invalid session token")?
+    };
+
+    // Получаем существующие данные пользователя для логирования
+    let existing_user_query = "SELECT full_name FROM users WHERE id = $1";
+    let existing_user_row = sqlx::query(existing_user_query)
+        .bind(user_id)
+        .fetch_optional(&state.pool)
+        .await
+        .map_err(|e| format!("Database error: {}", e))?;
+
+    if existing_user_row.is_none() {
+        return Err(format!("Пользователь с ID {} не найден", user_id));
+    }
+
     let query = "DELETE FROM users WHERE id=$1";
     sqlx::query(query)
         .bind(user_id)
         .execute(&state.pool)
         .await
         .map_err(|e| format!("Database error: {}", e))?;
+
+    // Логируем удаление пользователя
+    let log_result = log_event(
+        Some(session_user.id),
+        "Delete_User".to_string(),
+        format!("Удален пользователь с ID {}: '{}'", user_id, existing_user_row.unwrap().get::<String, _>("full_name")),
+        None, // IP-адрес пока не реализован
+        state.clone()
+    ).await;
+
+    if let Err(e) = log_result {
+        eprintln!("Error logging user deletion: {}", e);
+    }
 
     Ok("User deleted successfully".to_string())
 }
@@ -1380,14 +1777,89 @@ async fn save_system_settings(_settings: String, _state: tauri::State<'_, Databa
 
 // Event logs
 #[tauri::command]
-async fn get_system_logs(_filters: String, _state: tauri::State<'_, Database>) -> Result<String, String> {
-    // For now, return placeholder log entries as JSON
-    // In a real implementation, this would query the actual logs from the database based on filters
-    Ok(r#"[
-        {"timestamp": "30.11.2025 10:15", "user": "admin", "event": "Вход", "details": "Успешный вход"},
-        {"timestamp": "30.11.2025 10:20", "user": "master", "event": "Создание", "details": "Заказ #105"},
-        {"timestamp": "30.11.2025 11:00", "user": "admin", "event": "Удаление", "details": "User: worker2"}
-    ]"#.to_string())
+async fn get_system_logs(filters: String, state: tauri::State<'_, Database>) -> Result<String, String> {
+    use serde_json::Value;
+
+    // Парсим фильтры из JSON строки
+    let filter_json: Value = serde_json::from_str(&filters).map_err(|e| format!("Invalid filters JSON: {}", e))?;
+
+    let mut query = "SELECT sl.id, sl.user_id, sl.event_type, sl.description, sl.ip_address, sl.created_at, u.full_name as user_name FROM system_logs sl LEFT JOIN users u ON sl.user_id = u.id".to_string();
+    let mut conditions = Vec::new();
+    let mut params = Vec::new();
+
+    // Фильтр по типу события
+    if let Some(event_filter) = filter_json.get("filter").and_then(|v| v.as_str()) {
+        if event_filter != "Все события" {
+            conditions.push("sl.event_type = $1");
+            params.push(event_filter.to_string());
+        }
+    }
+
+    // Поиск по описанию
+    if let Some(search) = filter_json.get("search").and_then(|v| v.as_str()) {
+        if !search.is_empty() {
+            let search_pattern = format!("%{}%", search.to_lowercase());
+            conditions.push("LOWER(sl.description) LIKE $2");
+            params.push(search_pattern);
+        }
+    }
+
+    // Добавляем условия к запросу
+    if !conditions.is_empty() {
+        query.push_str(&format!(" WHERE {}", conditions.join(" AND ")));
+    }
+
+    // Сортируем по времени создания (новые первыми)
+    query.push_str(" ORDER BY sl.created_at DESC LIMIT 100"); // Ограничим выборку для производительности
+
+    let mut query_builder = sqlx::QueryBuilder::new(query);
+
+    // Добавляем параметры
+    for param in params.iter() {
+        query_builder.push_bind(param);
+    }
+
+    let query_result = query_builder.build();
+    let rows = query_result.fetch_all(&state.pool).await.map_err(|e| format!("Database error: {}", e))?;
+
+    // Формируем результат в формате JSON
+    let mut logs_json = Vec::new();
+    for row in rows {
+        let created_at: chrono::NaiveDateTime = row.get("created_at");
+        let log_entry = serde_json::json!({
+            "id": row.get::<i32, _>("id"),
+            "user": row.get::<Option<String>, _>("user_name").unwrap_or_else(|| "System".to_string()),
+            "event": row.get::<String, _>("event_type"),
+            "details": row.get::<String, _>("description"),
+            "timestamp": created_at.format("%Y-%m-%d %H:%M:%S").to_string(),  // Форматируем дату в строку
+            "ip": row.get::<Option<String>, _>("ip_address").unwrap_or_else(|| "N/A".to_string())
+        });
+        logs_json.push(log_entry);
+    }
+
+    serde_json::to_string(&logs_json).map_err(|e| format!("JSON serialization error: {}", e))
+}
+
+#[tauri::command]
+async fn log_event(
+    user_id: Option<i32>,
+    event_type: String,
+    description: String,
+    ip_address: Option<String>,
+    state: tauri::State<'_, Database>
+) -> Result<String, String> {
+    let query = "INSERT INTO system_logs (user_id, event_type, description, ip_address) VALUES ($1, $2, $3, $4)";
+
+    sqlx::query(query)
+        .bind(user_id)
+        .bind(&event_type)
+        .bind(&description)
+        .bind(&ip_address)
+        .execute(&state.pool)
+        .await
+        .map_err(|e| format!("Database error logging event: {}", e))?;
+
+    Ok("Event logged successfully".to_string())
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -1441,7 +1913,19 @@ pub fn run() {
             get_all_defect_types,
             get_orders_for_worker,
             get_order_details_for_worker,
-            get_archived_orders
+            get_archived_orders,
+            get_all_services,
+            create_service,
+            update_service,
+            delete_service,
+            get_service_defect_types,
+            link_service_to_defect_type,
+            get_all_defect_types_grouped,
+            create_user,
+            update_user,
+            delete_user,
+            get_system_logs,
+            log_event
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
