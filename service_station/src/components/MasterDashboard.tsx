@@ -806,7 +806,6 @@ const MasterDashboard: React.FC = () => {
           isOpen={showClientApprovalModal}
           order={selectedOrder}
           clientName={clients[selectedOrder.client_id]?.full_name || 'Клиент'}
-          defects={orderDefects}
           works={orderWorks}
           parts={orderParts}
           onClose={() => setShowClientApprovalModal(false)}

@@ -504,6 +504,42 @@ async fn get_orders_for_storekeeper(state: tauri::State<'_, Database>) -> Result
 }
 
 #[tauri::command]
+async fn get_orders_for_worker(worker_id: i32, state: tauri::State<'_, Database>) -> Result<Vec<Order>, String> {
+    // Query to get orders assigned to a specific worker
+    let query = "SELECT id, client_id, car_id, master_id, worker_id, status::text, complaint, current_mileage, prepayment::text, total_amount::text, created_at::text, completed_at::text FROM orders WHERE worker_id = $1 AND status IN ('In_Work')";
+    let rows = sqlx::query(query)
+        .bind(worker_id)
+        .fetch_all(&state.pool)
+        .await
+        .map_err(|e| format!("Database error: {}", e))?;
+
+    let mut orders = Vec::new();
+    for row in rows {
+        orders.push(Order {
+            id: row.get("id"),
+            client_id: row.get("client_id"),
+            car_id: row.get("car_id"),
+            master_id: row.get("master_id"),
+            worker_id: row.get("worker_id"),
+            status: row.get("status"),
+            complaint: row.get("complaint"),
+            current_mileage: row.get("current_mileage"),
+            prepayment: row.get("prepayment"),
+            total_amount: row.get("total_amount"),
+            created_at: row.get("created_at"),
+            completed_at: row.get("completed_at"),
+        });
+    }
+
+    println!("Fetched {} orders for worker {}", orders.len(), worker_id);
+    for order in &orders {
+        println!("Order {} status: {}", order.id, order.status);
+    }
+
+    Ok(orders)
+}
+
+#[tauri::command]
 async fn get_orders_for_diagnostician(state: tauri::State<'_, Database>) -> Result<Vec<Order>, String> {
     // Query to get orders that need diagnostics from the database
     let query = "SELECT id, client_id, car_id, master_id, worker_id, status::text, complaint, current_mileage, prepayment::text, total_amount::text, created_at::text, completed_at::text FROM orders WHERE status = 'Diagnostics'";
@@ -1291,7 +1327,8 @@ pub fn run() {
             check_database_triggers,
             get_defect_nodes,
             get_defect_types_by_node,
-            get_all_defect_types
+            get_all_defect_types,
+            get_orders_for_worker
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

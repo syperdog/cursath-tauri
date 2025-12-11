@@ -39,7 +39,6 @@ interface ClientApprovalModalProps {
   isOpen: boolean;
   order: Order;
   clientName: string;
-  defects: Defect[];
   works: Work[];
   parts: Part[];
   onClose: () => void;
@@ -142,7 +141,7 @@ const ClientApprovalModal: React.FC<ClientApprovalModalProps> = ({
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h2>📋 ЗАКАЗ-НАРЯД #{order.id}</h2>
+          <h2>📋 СОГЛАСОВАНИЕ УСЛУГ И ЗАПЧАСТЕЙ (Заказ #{order.id})</h2>
           <button className="close-btn" onClick={onClose}>✖ ОТМЕНА</button>
         </div>
 
@@ -156,30 +155,7 @@ const ClientApprovalModal: React.FC<ClientApprovalModalProps> = ({
           </div>
 
           <div className="approval-section">
-            <h3>📋 СОГЛАСОВАНИЕ РАБОТ И ЗАПЧАСТЕЙ:</h3>
-
-            {defects.length > 0 && (
-              <div className="defect-group">
-                {defects.map(defect => (
-                  <div key={defect.id} className="defect-item">
-                    <div>
-                      <input
-                        type="checkbox"
-                        checked={true}
-                        disabled
-                        title="Диагностика обязательна"
-                      />
-                      {defect.defect_description}
-                    </div>
-                    {defect.diagnostician_comment && (
-                      <div className="defect-comment">
-                        <small>💬 Комментарий диагноста: {defect.diagnostician_comment}</small>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
+            <h3>📋 СОГЛАСОВАНИЕ УСЛУГ И ЗАПЧАСТЕЙ:</h3>
 
             {localWorks.length > 0 && (
               <div className="works-group">

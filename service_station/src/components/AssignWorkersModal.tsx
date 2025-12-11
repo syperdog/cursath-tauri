@@ -43,31 +43,29 @@ interface AssignWorkersModalProps {
   onAssignmentSaved: () => void;
 }
 
-const AssignWorkersModal: React.FC<AssignWorkersModalProps> = ({ 
-  isOpen, 
-  order, 
-  works, 
-  onClose, 
-  onAssignmentSaved 
+const AssignWorkersModal: React.FC<AssignWorkersModalProps> = ({
+  isOpen,
+  order,
+  works,
+  onClose,
+  onAssignmentSaved
 }) => {
   const [workers, setWorkers] = useState<Worker[]>([]);
-  const [workAssignments, setWorkAssignments] = useState<Record<number, number | null>>({});
+  const [selectedWorkerId, setSelectedWorkerId] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
-      console.log('AssignWorkersModal: Opening with works:', works);
+      console.log('AssignWorkersModal: Opening for order:', order);
       loadWorkers();
-      // Initialize assignments with existing worker assignments
-      const initialAssignments = works.reduce((acc, work) => {
-        acc[work.id] = work.worker_id || null;
-        return acc;
-      }, {} as Record<number, number | null>);
-      console.log('AssignWorkersModal: Initial assignments:', initialAssignments);
-      setWorkAssignments(initialAssignments);
+      
+      // Устанавливаем выбранного работника, если он уже назначен
+      if (order.worker_id) {
+        setSelectedWorkerId(order.worker_id);
+      }
     }
-  }, [isOpen, works]);
+  }, [isOpen, order]);
 
   const loadWorkers = async () => {
     setLoading(true);
@@ -84,52 +82,35 @@ const AssignWorkersModal: React.FC<AssignWorkersModalProps> = ({
 
   if (!isOpen) return null;
 
-  const handleWorkerChange = (workId: number, workerId: number | null) => {
-    setWorkAssignments(prev => ({
-      ...prev,
-      [workId]: workerId
-    }));
-  };
-
   const getAvailableWorkers = () => {
     // Return all available workers - in a real app this could be filtered by specialization
     return workers.filter(worker => worker.status === 'Active');
   };
 
-  const [mainWorkerId, setMainWorkerId] = useState<number | null>(null);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validate that all confirmed works have assigned workers
-    const confirmedWorks = works.filter(work => work.is_confirmed);
-    const unassignedWorks = confirmedWorks.filter(work => !workAssignments[work.id]);
-    if (unassignedWorks.length > 0) {
-      alert('Пожалуйста, назначьте исполнителей для всех подтвержденных работ');
+    if (!selectedWorkerId) {
+      alert('Пожалуйста, выберите исполнителя для выполнения работ');
       return;
     }
 
     setIsProcessing(true);
     try {
-      // Prepare work assignments for backend (only for confirmed works)
-      const confirmedWorks = works.filter(work => work.is_confirmed);
-      const assignments: [number, number][] = confirmedWorks
-        .filter(work => workAssignments[work.id])
-        .map(work => [work.id, workAssignments[work.id]!]);
-
-      // Send assignments to backend with main worker
+      // Send assignment to backend with main worker
+      // We'll pass an empty array for work assignments since we're only assigning the main worker
       await invoke('assign_workers_to_order', {
         orderId: order.id,
-        workAssignments: assignments,
-        mainWorkerId: mainWorkerId || null
+        workAssignments: [], // Не назначаем индивидуальные работы, только основного исполнителя
+        mainWorkerId: selectedWorkerId
       });
 
-      console.log('Workers assigned successfully');
+      console.log('Main worker assigned successfully');
       onAssignmentSaved();
       onClose();
     } catch (error) {
-      console.error('Error assigning workers:', error);
-      alert('Ошибка при назначении работников: ' + error);
+      console.error('Error assigning main worker:', error);
+      alert('Ошибка при назначении исполнителя: ' + error);
     } finally {
       setIsProcessing(false);
     }
@@ -139,115 +120,77 @@ const AssignWorkersModal: React.FC<AssignWorkersModalProps> = ({
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h2>👷 НАЗНАЧЕНИЕ ИСПОЛНИТЕЛЕЙ (Заказ #{order.id})</h2>
+          <h2>👷 НАЗНАЧЕНИЕ ИСПОЛНИТЕЛЯ (Заказ #{order.id})</h2>
           <button className="close-btn" onClick={onClose}>✖ ОТМЕНА</button>
         </div>
-        
+
         <form onSubmit={handleSubmit} className="modal-body">
           <div className="order-info">
             <p><strong>Заказ:</strong> #{order.id}</p>
             <p><strong>Статус заказа:</strong> {order.status}</p>
             <p><strong>Жалоба клиента:</strong> {order.complaint || 'Не указана'}</p>
           </div>
-          
+
           {loading ? (
             <div className="loading">Загрузка списка работников...</div>
           ) : (
-            <div className="works-section">
-              <h3>СПИСОК СОГЛАСОВАННЫХ РАБОТ:</h3>
-
-              {/* Поле для выбора основного исполнителя */}
-              <div className="main-worker-section">
-                <label htmlFor="main-worker-select">ОСНОВНОЙ ИСПОЛНИТЕЛЬ ЗАКАЗА:</label>
+            <div className="worker-selection-section">
+              <h3>ВЫБОР ИСПОЛНИТЕЛЯ:</h3>
+              
+              <div className="worker-selection-form">
+                <label htmlFor="worker-select">ИСПОЛНИТЕЛЬ:</label>
                 <select
-                  id="main-worker-select"
-                  value={mainWorkerId || ''}
-                  onChange={(e) => setMainWorkerId(e.target.value ? parseInt(e.target.value) : null)}
+                  id="worker-select"
+                  value={selectedWorkerId || ''}
+                  onChange={(e) => setSelectedWorkerId(e.target.value ? parseInt(e.target.value) : null)}
                 >
-                  <option value="">Не выбран (опционально)</option>
+                  <option value="">Выберите исполнителя</option>
                   {getAvailableWorkers().map(worker => (
                     <option key={worker.id} value={worker.id}>
                       {worker.full_name}
                     </option>
                   ))}
                 </select>
-                <p><small>Выберите основного исполнителя для всего заказа (опционально)</small></p>
               </div>
 
               {/* Отладочная информация */}
               <div style={{ backgroundColor: '#f0f0f0', padding: '10px', marginBottom: '10px', fontSize: '12px' }}>
-                <strong>DEBUG INFO:</strong><br/>
-                Всего работ: {works.length}<br/>
+                <strong>ИНФОРМАЦИЯ:</strong><br/>
+                Всего работ в заказе: {works.length}<br/>
                 Подтвержденных работ: {works.filter(work => work.is_confirmed).length}<br/>
-                Работников загружено: {workers.length}<br/>
-                Основной исполнитель: {mainWorkerId ? `ID ${mainWorkerId}` : 'не назначен'}<br/>
-                {works.length > 0 && (
-                  <>
-                    Пример работы: ID={works[0].id}, confirmed={works[0].is_confirmed ? 'true' : 'false'}<br/>
-                  </>
-                )}
+                Доступных работников: {workers.length}<br/>
+                Выбранный исполнитель: {selectedWorkerId ? `ID ${selectedWorkerId}` : 'не выбран'}
               </div>
 
-              <table className="works-table">
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>Работа</th>
-                    <th>Цена</th>
-                    <th>Подтверждено</th>
-                    <th>Исполнитель</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {works.map(work => (
-                    <tr key={work.id} style={work.is_confirmed ? {} : { opacity: 0.6, fontStyle: 'italic' }}>
-                      <td>{work.id}</td>
-                      <td>{work.service_name_snapshot}</td>
-                      <td>{parseFloat(work.price || '0').toFixed(2)} $</td>
-                      <td>{work.is_confirmed ? '✅' : '❌'}</td>
-                      <td>
-                        <select
-                          value={workAssignments[work.id] || ''}
-                          onChange={(e) => handleWorkerChange(work.id, e.target.value ? parseInt(e.target.value) : null)}
-                          required
-                        >
-                          <option value="">Выберите исполнителя</option>
-                          {getAvailableWorkers().map(worker => (
-                            <option key={worker.id} value={worker.id}>
-                              {worker.full_name}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-
-              {works.length === 0 && (
-                <div style={{ padding: '20px', textAlign: 'center', backgroundColor: '#fff3cd', border: '1px solid #ffeaa7' }}>
-                  <p><strong>Нет работ для назначения</strong></p>
-                  <p>Возможные причины:</p>
-                  <ul style={{ textAlign: 'left', display: 'inline-block' }}>
-                    <li>Работы не были добавлены через диагностику</li>
-                    <li>Ошибка при сохранении работ в базу данных</li>
+              {/* Список подтвержденных работ для информации */}
+              <div className="confirmed-works-info">
+                <h4>ПОДТВЕРЖДЕННЫЕ РАБОТЫ:</h4>
+                {works.filter(work => work.is_confirmed).length > 0 ? (
+                  <ul>
+                    {works.filter(work => work.is_confirmed).map(work => (
+                      <li key={work.id}>
+                        {work.service_name_snapshot} - {parseFloat(work.price || '0').toFixed(2)} $
+                      </li>
+                    ))}
                   </ul>
-                </div>
-              )}
+                ) : (
+                  <p>Нет подтвержденных работ</p>
+                )}
+              </div>
             </div>
           )}
-          
+
           <div className="modal-actions">
-            <button 
-              type="submit" 
+            <button
+              type="submit"
               className="save-btn"
-              disabled={isProcessing || loading}
+              disabled={isProcessing || loading || !selectedWorkerId}
             >
               {isProcessing ? 'Обработка...' : '💾 СОХРАНИТЬ И ПЕРЕДАТЬ В ЦЕХ'}
             </button>
-            <button 
-              type="button" 
-              onClick={onClose} 
+            <button
+              type="button"
+              onClick={onClose}
               className="cancel-btn"
               disabled={isProcessing}
             >

@@ -6,9 +6,17 @@ import OrderExecutionModal from './OrderExecutionModal';
 // Define TypeScript interfaces
 interface Order {
   id: number;
-  car: string;
+  client_id: number;
+  car_id: number;
+  master_id: number | null;
+  worker_id: number | null; // Main worker assigned to the entire order
   status: string;
-  estimatedTime?: string;
+  complaint: string | null;
+  current_mileage: number | null;
+  prepayment: string | null;
+  total_amount: string | null;
+  created_at: string;
+  completed_at: string | null;
 }
 
 interface Part {
@@ -41,16 +49,17 @@ const WorkerDashboard: React.FC = () => {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [showOrderExecutionModal, setShowOrderExecutionModal] = useState<boolean>(false);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [cars, setCars] = useState<Record<number, { make: string; model: string; license_plate: string }>>({});
   const [currentTime, setCurrentTime] = useState<string>('');
 
   // Update the current time every minute
   useEffect(() => {
     // Update time immediately
     updateTime();
-    
+
     // Set up interval to update time every minute
     const interval = setInterval(updateTime, 60000);
-    
+
     // Clean up interval
     return () => clearInterval(interval);
   }, []);
@@ -72,6 +81,11 @@ const WorkerDashboard: React.FC = () => {
           setUser(userData);
           // Установим имя работника из данных пользователя
           setWorkerName(userData.full_name);
+
+          // Загрузим заказы, назначенные на этого работника
+          if (userData.role === 'Worker') {
+            await loadWorkerOrders(userData.id);
+          }
         } else {
           // Перенаправить на форму входа, если сессия неактивна или роль не та
           window.location.hash = '#login';
@@ -87,30 +101,37 @@ const WorkerDashboard: React.FC = () => {
     }
   };
 
+  const loadWorkerOrders = async (workerId: number) => {
+    try {
+      const ordersData = await invoke<Order[]>('get_orders_for_worker', { workerId });
+      setOrders(ordersData);
+
+      // Загрузим информацию об автомобилях для отображения
+      const uniqueCarIds = [...new Set(ordersData.map(order => order.car_id))];
+      for (const carId of uniqueCarIds) {
+        if (!cars[carId]) {
+          try {
+            const carData = await invoke<any>('get_car_by_id', { carId });
+            if (carData) {
+              setCars(prev => ({ ...prev, [carId]: {
+                make: carData.make,
+                model: carData.model,
+                license_plate: carData.license_plate || 'Нет номера'
+              }}));
+            }
+          } catch (error) {
+            console.error(`Error loading car ${carId}:`, error);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error loading worker orders:', error);
+    }
+  };
+
   const updateTime = () => {
     const now = new Date();
     setCurrentTime(now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
-  };
-
-  const loadWorkerData = async () => {
-    // In a real implementation, this would fetch data from the backend
-    // For now, we'll use mock data based on the specifications in q.txt
-    
-    const mockOrders: Order[] = [
-      {
-        id: 105,
-        car: 'BMW X5',
-        status: 'Ожидает начала',
-      },
-      {
-        id: 112,
-        car: 'Audi Q7',
-        status: 'В работе (01:15)',
-      }
-    ];
-    
-    setOrders(mockOrders);
-    setWorkerName('Сидоров С.С.');
   };
 
   const handleOpenOrder = () => {
@@ -159,17 +180,21 @@ const WorkerDashboard: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {orders.map(order => (
-                  <tr 
-                    key={order.id} 
-                    className={selectedOrder?.id === order.id ? 'selected' : ''}
-                    onClick={() => setSelectedOrder(order)}
-                  >
-                    <td>{order.id}</td>
-                    <td>{order.car}</td>
-                    <td>{order.status}</td>
-                  </tr>
-                ))}
+                {orders.map(order => {
+                  const carInfo = cars[order.car_id];
+                  const carDisplay = carInfo ? `${carInfo.make} ${carInfo.model} (${carInfo.license_plate})` : `Авто #${order.car_id}`;
+                  return (
+                    <tr
+                      key={order.id}
+                      className={selectedOrder?.id === order.id ? 'selected' : ''}
+                      onClick={() => setSelectedOrder(order)}
+                    >
+                      <td>{order.id}</td>
+                      <td>{carDisplay}</td>
+                      <td>{order.status}</td>
+                    </tr>
+                  );
+                })}
                 {orders.length === 0 && (
                   <tr>
                     <td colSpan={3} className="no-orders">Нет назначенных задач</td>
