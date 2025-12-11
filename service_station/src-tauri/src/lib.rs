@@ -252,7 +252,7 @@ async fn get_orders_for_master(state: tauri::State<'_, Database>) -> Result<Vec<
         });
     }
 
-    println!("Fetched {} orders for diagnostician", orders.len());
+    println!("Fetched {} orders for master", orders.len());
     for order in &orders {
         println!("Order {} status: {}", order.id, order.status);
     }
@@ -537,6 +537,56 @@ async fn get_orders_for_worker(worker_id: i32, state: tauri::State<'_, Database>
     }
 
     Ok(orders)
+}
+
+#[tauri::command]
+async fn get_order_details_for_worker(order_id: i32, worker_id: i32, state: tauri::State<'_, Database>) -> Result<(Order, Vec<OrderWork>, Vec<OrderPart>, Vec<OrderDefect>), String> {
+    // Проверяем, что заказ назначен этому работнику
+    let check_query = "SELECT worker_id FROM orders WHERE id = $1";
+    let row = sqlx::query(check_query)
+        .bind(order_id)
+        .fetch_one(&state.pool)
+        .await
+        .map_err(|e| format!("Database error checking order assignment: {}", e))?;
+
+    let assigned_worker_id: Option<i32> = row.get("worker_id");
+    if assigned_worker_id != Some(worker_id) {
+        return Err(format!("Order {} is not assigned to worker {}", order_id, worker_id));
+    }
+
+    // Получаем информацию о заказе
+    let order_query = "SELECT id, client_id, car_id, master_id, worker_id, status::text, complaint, current_mileage, prepayment::text, total_amount::text, created_at::text, completed_at::text FROM orders WHERE id = $1";
+    let order_row = sqlx::query(order_query)
+        .bind(order_id)
+        .fetch_one(&state.pool)
+        .await
+        .map_err(|e| format!("Database error fetching order: {}", e))?;
+
+    let order = Order {
+        id: order_row.get("id"),
+        client_id: order_row.get("client_id"),
+        car_id: order_row.get("car_id"),
+        master_id: order_row.get("master_id"),
+        worker_id: order_row.get("worker_id"),
+        status: order_row.get("status"),
+        complaint: order_row.get("complaint"),
+        current_mileage: order_row.get("current_mileage"),
+        prepayment: order_row.get("prepayment"),
+        total_amount: order_row.get("total_amount"),
+        created_at: order_row.get("created_at"),
+        completed_at: order_row.get("completed_at"),
+    };
+
+    // Получаем работы по заказу
+    let works = get_order_works_by_order_id(order_id, state.clone()).await?;
+
+    // Получаем запчасти по заказу
+    let parts = get_order_parts_by_order_id(order_id, state.clone()).await?;
+
+    // Получаем неисправности для отчета диагностики
+    let defects = get_diagnostic_results_by_order_id(order_id, state).await?;
+
+    Ok((order, works, parts, defects))
 }
 
 #[tauri::command]
@@ -1328,7 +1378,8 @@ pub fn run() {
             get_defect_nodes,
             get_defect_types_by_node,
             get_all_defect_types,
-            get_orders_for_worker
+            get_orders_for_worker,
+            get_order_details_for_worker
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

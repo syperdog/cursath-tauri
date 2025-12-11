@@ -52,6 +52,7 @@ const FinalProcessingModal: React.FC<FinalProcessingModalProps> = ({
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'bank_transfer'>('card');
   const [prepaymentAmount, setPrepaymentAmount] = useState<number>(0);
   const [finalAmount, setFinalAmount] = useState<number>(0);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   useEffect(() => {
     if (order && order.total_amount) {
@@ -67,10 +68,23 @@ const FinalProcessingModal: React.FC<FinalProcessingModalProps> = ({
     console.log('Печать чека/акта выполненных работ');
   };
 
-  const handleConfirmDelivery = () => {
-    // В реальной реализации обновляем статус заказа в базе данных
-    console.log('Заказ подтвержден к выдаче');
-    onCompletion();
+  const handleConfirmDelivery = async () => {
+    setIsProcessing(true);
+    try {
+      // Обновляем статус заказа на "Closed" (окончательно закрыт)
+      await invoke('update_order_status', {
+        orderId: order.id,
+        newStatus: 'Closed'
+      });
+
+      console.log('Заказ подтвержден к выдаче');
+      onCompletion();
+    } catch (error) {
+      console.error('Error updating order status:', error);
+      alert('Ошибка при завершении заказа: ' + error);
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   if (!isOpen) return null;
@@ -79,7 +93,7 @@ const FinalProcessingModal: React.FC<FinalProcessingModalProps> = ({
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h2>🏁 ВЫДАЧА: Заказ #{order?.id || 'N/A'}</h2>
+          <h2>🏁 ОКОНЧАТЕЛЬНОЕ ЗАВЕРШЕНИЕ: Заказ #{order.id}</h2>
           <button className="close-btn" onClick={onClose}>✖ ОТМЕНА</button>
         </div>
 
@@ -87,24 +101,16 @@ const FinalProcessingModal: React.FC<FinalProcessingModalProps> = ({
           <div className="client-car-info">
             <p><strong>👤 КЛИЕНТ:</strong> {client?.full_name || 'N/A'}</p>
             <p><strong>🚗 АВТО:</strong> {car ? `${car.make} ${car.model} (${car.license_plate || 'No plate'})` : 'N/A'}</p>
-            <p><strong>📅 ДАТА ПРИЕМКИ:</strong> 25.11.2025</p>
-            <p><strong>📅 ДАТА ЗАВЕРШЕНИЯ:</strong> 29.11.2025</p>
+            <p><strong>📅 ДАТА ПРИЕМКИ:</strong> {new Date(order.created_at).toLocaleDateString()}</p>
+            <p><strong>📅 ДАТА ЗАВЕРШЕНИЯ:</strong> {new Date().toLocaleDateString()}</p>
           </div>
 
           <div className="payment-breakdown">
             <h3>💰 ИТОГОВАЯ СУММА:</h3>
             <div className="payment-details">
-              <div className="payment-line">
-                <span>Работы:</span>
-                <span>4000 $</span>
-              </div>
-              <div className="payment-line">
-                <span>Запчасти:</span>
-                <span>5000 $</span>
-              </div>
               <div className="payment-line total">
                 <span>ВСЕГО:</span>
-                <span>{order?.total_amount || '0'} $</span>
+                <span>{order.total_amount || '0'} $</span>
               </div>
               <div className="payment-line discount">
                 <span>Оплачено ранее (аванс):</span>
@@ -155,8 +161,12 @@ const FinalProcessingModal: React.FC<FinalProcessingModalProps> = ({
           <button className="print-btn" onClick={handlePrintReceipt}>
             🖨️ ПЕЧАТЬ ЧЕКА
           </button>
-          <button className="confirm-delivery-btn" onClick={handleConfirmDelivery}>
-            ✅ ПОДТВЕРДИТЬ ВЫДАЧУ
+          <button
+            className="confirm-delivery-btn"
+            onClick={handleConfirmDelivery}
+            disabled={isProcessing}
+          >
+            {isProcessing ? 'Обработка...' : '✅ ОКОНЧАТЕЛЬНО ЗАВЕРШИТЬ'}
           </button>
         </div>
       </div>

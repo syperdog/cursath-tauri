@@ -3,6 +3,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { User } from '../types/user';
 import OrderDetailsModal from './OrderDetailsModal';
 import ClientApprovalModal from './ClientApprovalModal';
+import FinalProcessingModal from './FinalProcessingModal';
 import './MasterDashboard.css';
 import NewClientModal from './NewClientModal';
 import NewCarModal from './NewCarModal';
@@ -78,6 +79,9 @@ const MasterDashboard: React.FC = () => {
   const [showNewCarModal, setShowNewCarModal] = useState(false);
   const [showAssignWorkersModal, setShowAssignWorkersModal] = useState(false);
   const [showClientApprovalModal, setShowClientApprovalModal] = useState(false);
+  const [showFinalProcessingModal, setShowFinalProcessingModal] = useState(false);
+  const [selectedClientForFinalProcessing, setSelectedClientForFinalProcessing] = useState<Client | null>(null);
+  const [selectedCarForFinalProcessing, setSelectedCarForFinalProcessing] = useState<Car | null>(null);
   const [orderDefects, setOrderDefects] = useState<any[]>([]);
   const [orderWorks, setOrderWorks] = useState<any[]>([]);
   const [orderParts, setOrderParts] = useState<any[]>([]);
@@ -405,11 +409,11 @@ const MasterDashboard: React.FC = () => {
           invoke<any[]>('get_order_works_by_order_id', { orderId: order.id }),
           invoke<any[]>('get_order_parts_by_order_id', { orderId: order.id })
         ]);
-        
+
         setOrderDefects(defects);
         setOrderWorks(works);
         setOrderParts(parts);
-        
+
         // Проверяем, есть ли уже подтвержденные работы
         const confirmedWorks = works.filter((work: any) => work.is_confirmed);
         if (confirmedWorks.length > 0) {
@@ -423,6 +427,14 @@ const MasterDashboard: React.FC = () => {
         console.error('Error loading order data:', error);
         setIsModalOpen(true);
       }
+    } else if (order.status === 'Ready') {
+      // Для заказов в статусе "Ready" открываем модальное окно завершения
+      const client = await invoke<Client | null>('get_client_by_id', { clientId: order.client_id });
+      const car = await invoke<Car | null>('get_car_by_id', { carId: order.car_id });
+
+      setSelectedClientForFinalProcessing(client);
+      setSelectedCarForFinalProcessing(car);
+      setShowFinalProcessingModal(true);
     } else {
       setIsModalOpen(true);
     }
@@ -876,6 +888,21 @@ const MasterDashboard: React.FC = () => {
             // In a real application we would save the client to the backend
             console.log('New client created:', client);
             setShowNewClientModal(false);
+          }}
+        />
+      )}
+
+      {/* Модальное окно завершения заказа */}
+      {showFinalProcessingModal && selectedOrder && selectedClientForFinalProcessing && selectedCarForFinalProcessing && (
+        <FinalProcessingModal
+          isOpen={showFinalProcessingModal}
+          order={selectedOrder}
+          client={selectedClientForFinalProcessing}
+          car={selectedCarForFinalProcessing}
+          onClose={() => setShowFinalProcessingModal(false)}
+          onCompletion={() => {
+            setShowFinalProcessingModal(false);
+            loadOrders(); // Перезагружаем список заказов после завершения
           }}
         />
       )}

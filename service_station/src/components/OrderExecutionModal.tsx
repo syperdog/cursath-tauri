@@ -1,20 +1,52 @@
 import React, { useState, useEffect } from 'react';
+import { invoke } from '@tauri-apps/api/core';
 import './OrderExecutionModal.css';
 
 // Define TypeScript interfaces
 interface WorkItem {
   id: number;
-  description: string;
-  estimatedHours: number;
-  status: 'Completed' | 'In Progress' | 'Pending';
-  checked: boolean;
+  order_id: number;
+  service_id?: number;
+  service_name_snapshot: string;
+  price: string; // Changed to string for DECIMAL compatibility
+  worker_id?: number | null;
+  status: string;
+  is_confirmed: boolean;
 }
 
 interface Part {
   id: number;
-  name: string;
-  brand?: string;
-  status: 'Received' | 'Ordered' | 'InStock';
+  order_id: number;
+  warehouse_item_id?: number | null;
+  part_name_snapshot: string;
+  brand: string;
+  price_per_unit: string; // Changed to string for DECIMAL compatibility
+  quantity: number;
+  is_confirmed: boolean;
+}
+
+interface Defect {
+  id: number;
+  order_id: number;
+  diagnostician_id: number;
+  defect_description: string;
+  diagnostician_comment: string | null;
+  is_confirmed: boolean;
+}
+
+interface Order {
+  id: number;
+  client_id: number;
+  car_id: number;
+  master_id: number | null;
+  worker_id: number | null;
+  status: string;
+  complaint: string | null;
+  current_mileage: number | null;
+  prepayment: string | null;
+  total_amount: string | null;
+  created_at: string;
+  completed_at: string | null;
 }
 
 interface OrderExecutionModalProps {
@@ -23,89 +55,96 @@ interface OrderExecutionModalProps {
 }
 
 const OrderExecutionModal: React.FC<OrderExecutionModalProps> = ({ orderId, onClose }) => {
-  const [works, setWorks] = useState<WorkItem[]>([
-    {
-      id: 1,
-      description: 'Замена переднего левого рычага',
-      estimatedHours: 1.5,
-      status: 'Completed',
-      checked: true
-    },
-    {
-      id: 2,
-      description: 'Замена передних тормозных колодок',
-      estimatedHours: 0.8,
-      status: 'In Progress',
-      checked: false
-    },
-    {
-      id: 3,
-      description: 'Проверка уровня тормозной жидкости',
-      estimatedHours: 0.2,
-      status: 'Pending',
-      checked: false
-    }
-  ]);
-
-  const [parts, setParts] = useState<Part[]>([
-    {
-      id: 1,
-      name: 'Рычаг передний левый',
-      brand: 'Lemforder',
-      status: 'Received'
-    },
-    {
-      id: 2,
-      name: 'Колодки тормозные',
-      brand: 'Patron',
-      status: 'Ordered'
-    }
-  ]);
-
+  const [order, setOrder] = useState<Order | null>(null);
+  const [works, setWorks] = useState<WorkItem[]>([]);
+  const [parts, setParts] = useState<Part[]>([]);
+  const [defects, setDefects] = useState<Defect[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selectedWork, setSelectedWork] = useState<number | null>(null);
   const [showDiagnosticReport, setShowDiagnosticReport] = useState<boolean>(false);
 
+  useEffect(() => {
+    const fetchOrderDetails = async () => {
+      try {
+        // Получаем ID текущего пользователя из сессии
+        const sessionToken = localStorage.getItem('sessionToken');
+        if (!sessionToken) {
+          throw new Error('Session token not found');
+        }
+
+        const userData = await invoke('get_user_session', { sessionToken });
+        if (!userData) {
+          throw new Error('User data not found');
+        }
+
+        const workerId = userData.id;
+
+        // Получаем детали заказа для работника
+        const [orderData, worksData, partsData, defectsData] =
+          await invoke<[Order, WorkItem[], Part[], Defect[]]>('get_order_details_for_worker', {
+            orderId,
+            workerId
+          });
+
+        setOrder(orderData);
+        setWorks(worksData);
+        setParts(partsData);
+        setDefects(defectsData);
+      } catch (error) {
+        console.error('Error fetching order details:', error);
+        alert('Ошибка при загрузке данных заказа: ' + error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchOrderDetails();
+  }, [orderId]);
+
   const getStatusIcon = (status: string) => {
-    switch(status) {
-      case 'Completed': return '✅';
-      case 'In Progress': return '🔄';
-      case 'Pending': return '⏳';
-      case 'Received': return '✅';
-      case 'Ordered': return '⏳';
-      case 'InStock': return '📦';
-      default: return '';
-    }
+    const statusMap: Record<string, string> = {
+      'Completed': '✅',
+      'In Progress': '🔄',
+      'Pending': '⏳',
+      'Received': '✅',
+      'Ordered': '⏳',
+      'InStock': '📦',
+      'In_Work': '🔧',
+      'Done': '✅'
+    };
+    return statusMap[status] || '❓';
   };
 
   const getStatusText = (status: string) => {
-    switch(status) {
-      case 'Completed': return 'Готово';
-      case 'In Progress': return 'В работе';
-      case 'Pending': return 'Ожидание';
-      case 'Received': return 'Получено';
-      case 'Ordered': return 'Заказано';
-      case 'InStock': return 'На складе';
-      default: return status;
-    }
+    const statusMap: Record<string, string> = {
+      'Completed': 'Готово',
+      'In Progress': 'В работе',
+      'Pending': 'Ожидание',
+      'Received': 'Получено',
+      'Ordered': 'Заказано',
+      'InStock': 'На складе',
+      'In_Work': 'В работе',
+      'Done': 'Выполнено'
+    };
+    return statusMap[status] || status;
   };
 
   const toggleWorkStatus = (id: number) => {
-    setWorks(works.map(work => 
-      work.id === id 
-        ? { 
-            ...work, 
-            checked: !work.checked,
-            status: !work.checked ? 'In Progress' : 'Pending'
-          } 
+    setWorks(works.map(work =>
+      work.id === id
+        ? {
+            ...work,
+            status: work.status === 'Done' ? 'Pending' : 'Done'
+          }
         : work
     ));
   };
 
   const handleStartWork = () => {
     if (selectedWork !== null) {
-      setWorks(works.map(work => 
-        work.id === selectedWork 
-          ? { ...work, status: 'In Progress' } 
+      setWorks(works.map(work =>
+        work.id === selectedWork
+          ? { ...work, status: 'In Progress' }
           : work
       ));
     }
@@ -113,31 +152,55 @@ const OrderExecutionModal: React.FC<OrderExecutionModalProps> = ({ orderId, onCl
 
   const handleMarkCompleted = () => {
     if (selectedWork !== null) {
-      setWorks(works.map(work => 
-        work.id === selectedWork 
-          ? { ...work, status: 'Completed', checked: true } 
+      setWorks(works.map(work =>
+        work.id === selectedWork
+          ? { ...work, status: 'Done' }
           : work
       ));
     }
   };
 
-  const handleFinishOrder = () => {
+  const handleFinishOrder = async () => {
     // Check if all works are completed
-    const allCompleted = works.every(work => work.status === 'Completed');
-    
+    const allCompleted = works.every(work => work.status === 'Done' || work.status === 'Completed');
+
     if (allCompleted) {
-      alert(`Заказ ${orderId} завершен!`);
-      onClose();
+      try {
+        // Обновляем статус заказа
+        await invoke('update_order_status', {
+          orderId: order!.id,
+          newStatus: 'Ready' // заказ готов к выдаче
+        });
+        alert(`Заказ ${orderId} завершен и готов к выдаче!`);
+        onClose();
+      } catch (error) {
+        console.error('Error updating order status:', error);
+        alert('Ошибка при завершении заказа: ' + error);
+      }
     } else {
       alert('Не все работы выполнены. Завершите все работы перед сдачей заказа.');
     }
   };
 
+  if (loading) {
+    return (
+      <div className="modal-overlay">
+        <div className="order-execution-modal">
+          <div className="modal-header">
+            <h2>🔧 ЗАГРУЗКА ДАННЫХ: ЗАКАЗ #{orderId}</h2>
+            <button className="close-button" onClick={onClose}>✖</button>
+          </div>
+          <div className="loading">Загрузка данных заказа...</div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="modal-overlay">
       <div className="order-execution-modal">
         <div className="modal-header">
-          <h2>🔧 ЗАКАЗ #{orderId}: BMW X5</h2>
+          <h2>🔧 ЗАКАЗ #{order?.id}: ЗАГРУЗКА АВТОМОБИЛЯ</h2>
           <button className="close-button" onClick={onClose}>✖</button>
         </div>
 
@@ -150,26 +213,24 @@ const OrderExecutionModal: React.FC<OrderExecutionModalProps> = ({ orderId, onCl
                   <tr>
                     <th></th>
                     <th>Наименование работ</th>
-                    <th>Норма (ч)</th>
                     <th>Статус</th>
                   </tr>
                 </thead>
                 <tbody>
                   {works.map(work => (
-                    <tr 
+                    <tr
                       key={work.id}
                       className={selectedWork === work.id ? 'selected-work' : ''}
                       onClick={() => setSelectedWork(work.id)}
                     >
                       <td>
-                        <input 
-                          type="checkbox" 
-                          checked={work.checked}
+                        <input
+                          type="checkbox"
+                          checked={work.status === 'Done' || work.status === 'Completed'}
                           onChange={() => toggleWorkStatus(work.id)}
                         />
                       </td>
-                      <td>{work.description}</td>
-                      <td>{work.estimatedHours}</td>
+                      <td>{work.service_name_snapshot}</td>
                       <td>
                         <span className="status-badge">
                           {getStatusIcon(work.status)} {getStatusText(work.status)}
@@ -196,13 +257,13 @@ const OrderExecutionModal: React.FC<OrderExecutionModalProps> = ({ orderId, onCl
                 <tbody>
                   {parts.map(part => (
                     <tr key={part.id}>
-                      <td>{getStatusIcon(part.status)}</td>
+                      <td>{getStatusIcon(part.is_confirmed ? 'Received' : 'Ordered')}</td>
                       <td>
-                        {part.name} {part.brand && `(${part.brand})`}
+                        {part.part_name_snapshot} ({part.brand}) x{part.quantity}
                       </td>
                       <td>
                         <span className="status-badge">
-                          {getStatusText(part.status)}
+                          {getStatusText(part.is_confirmed ? 'Received' : 'Ordered')}
                         </span>
                       </td>
                     </tr>
@@ -232,19 +293,19 @@ const OrderExecutionModal: React.FC<OrderExecutionModalProps> = ({ orderId, onCl
           <div className="modal-overlay">
             <div className="diagnostic-report-modal">
               <div className="modal-header">
-                <h3>📋 ОТЧЕТ ДИАГНОСТА: BMW X5 (105)</h3>
-                <button 
-                  className="close-button" 
+                <h3>📋 ОТЧЕТ ДИАГНОСТА: ЗАКАЗ #{orderId}</h3>
+                <button
+                  className="close-button"
                   onClick={() => setShowDiagnosticReport(false)}
                 >
                   ✖
                 </button>
               </div>
-              
+
               <div className="modal-content">
                 <div className="diagnostic-details">
-                  <p><strong>ЖАЛОБА КЛИЕНТА:</strong> Стук в подвеске</p>
-                  
+                  <p><strong>ЖАЛОБА КЛИЕНТА:</strong> {order?.complaint || 'Не указана'}</p>
+
                   <h4>ВЫЯВЛЕННЫЕ НЕИСПРАВНОСТИ:</h4>
                   <table className="diagnostic-table">
                     <thead>
@@ -255,23 +316,20 @@ const OrderExecutionModal: React.FC<OrderExecutionModalProps> = ({ orderId, onCl
                       </tr>
                     </thead>
                     <tbody>
-                      <tr>
-                        <td>1</td>
-                        <td>Люфт шаровой опоры</td>
-                        <td>Передний левый рычаг, сильный люфт, пыльник порван.</td>
-                      </tr>
-                      <tr>
-                        <td>2</td>
-                        <td>Износ тормозных колодок</td>
-                        <td>Передние, остаток &lt; 20%.</td>
-                      </tr>
+                      {defects.map((defect, index) => (
+                        <tr key={defect.id}>
+                          <td>{index + 1}</td>
+                          <td>{defect.defect_description}</td>
+                          <td>{defect.diagnostician_comment || 'Нет комментария'}</td>
+                        </tr>
+                      ))}
                     </tbody>
                   </table>
                 </div>
               </div>
-              
+
               <div className="modal-actions">
-                <button 
+                <button
                   className="action-button"
                   onClick={() => setShowDiagnosticReport(false)}
                 >
