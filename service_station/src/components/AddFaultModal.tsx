@@ -1,58 +1,72 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { invoke } from '@tauri-apps/api/core';
 import './AddFaultModal.css';
-
-// Типы данных для неисправности
-type FaultCategory = {
-  id: string;
-  name: string;
-};
-
-type FaultType = {
-  id: string;
-  name: string;
-  categoryId: string;
-};
+import { DefectNode, DefectType } from '../types/defect';
 
 type Props = {
   onClose: () => void;
-  onAddFault: (fault: { category: string; type: string; comment: string }) => void;
+  onAddFault: (fault: { node_id: number; type_id: number; comment: string }) => void;
 };
 
 const AddFaultModal: React.FC<Props> = ({ onClose, onAddFault }) => {
-  // Состояния для категории, типа неисправности и комментария
-  const [selectedCategory, setSelectedCategory] = useState<string>('');
-  const [selectedFaultType, setSelectedFaultType] = useState<string>('');
+  // Состояния для узла, типа неисправности и комментария
+  const [defectNodes, setDefectNodes] = useState<DefectNode[]>([]);
+  const [defectTypes, setDefectTypes] = useState<DefectType[]>([]);
+  const [selectedNodeId, setSelectedNodeId] = useState<number>(0);
+  const [selectedTypeId, setSelectedTypeId] = useState<number>(0);
   const [comment, setComment] = useState<string>('');
+  const [loading, setLoading] = useState(true);
 
-  // Пример справочника неисправностей
-  const faultCategories: FaultCategory[] = [
-    { id: 'suspension', name: 'Подвеска' },
-    { id: 'brakes', name: 'Тормоза' },
-    { id: 'engine', name: 'Двигатель' },
-    { id: 'electrical', name: 'Электрооборудование' },
-  ];
+  // Загрузка узлов неисправностей при монтировании
+  useEffect(() => {
+    const loadNodes = async () => {
+      try {
+        const nodes = await invoke<DefectNode[]>('get_defect_nodes');
+        setDefectNodes(nodes);
+      } catch (error) {
+        console.error('Error loading defect nodes:', error);
+        alert('Ошибка загрузки узлов неисправностей: ' + error);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const faultTypes: FaultType[] = [
-    { id: 'ball_joint', name: 'Люфт шаровой опоры', categoryId: 'suspension' },
-    { id: 'brake_pad_wear', name: 'Износ колодок', categoryId: 'brakes' },
-    { id: 'engine_oil_leak', name: 'Течь масла', categoryId: 'engine' },
-    { id: 'battery_corrosion', name: 'Окисление клемм', categoryId: 'electrical' },
-  ];
+    loadNodes();
+  }, []);
 
-  // Фильтрация типов неисправностей по выбранной категории
-  const filteredFaultTypes = faultTypes.filter(
-    fault => fault.categoryId === selectedCategory
-  );
+  // Загрузка типов неисправностей при изменении выбранного узла
+  useEffect(() => {
+    const loadTypes = async () => {
+      if (selectedNodeId > 0) {
+        try {
+          setLoading(true);
+          const types = await invoke<DefectType[]>('get_defect_types_by_node', { nodeId: selectedNodeId });
+          setDefectTypes(types);
+        } catch (error) {
+          console.error('Error loading defect types:', error);
+          alert('Ошибка загрузки типов неисправностей: ' + error);
+        } finally {
+          setLoading(false);
+        }
+      } else {
+        setDefectTypes([]);
+      }
+    };
+
+    loadTypes();
+  }, [selectedNodeId]);
 
   // Обработчик добавления неисправности
   const handleAdd = () => {
-    if (selectedCategory && selectedFaultType && comment) {
+    if (selectedNodeId > 0 && selectedTypeId > 0 && comment) {
       onAddFault({
-        category: selectedCategory,
-        type: selectedFaultType,
+        node_id: selectedNodeId,
+        type_id: selectedTypeId,
         comment: comment
       });
       onClose();
+    } else {
+      alert('Пожалуйста, выберите узел, тип неисправности и укажите комментарий');
     }
   };
 
@@ -65,35 +79,38 @@ const AddFaultModal: React.FC<Props> = ({ onClose, onAddFault }) => {
         </div>
 
         <div className="modal-body">
+          {loading && <div className="loading">Загрузка данных...</div>}
+
           <div className="form-group">
-            <label>КАТЕГОРИЯ:</label>
-            <select 
-              value={selectedCategory} 
+            <label>УЗЕЛ:</label>
+            <select
+              value={selectedNodeId}
               onChange={(e) => {
-                setSelectedCategory(e.target.value);
-                setSelectedFaultType(''); // Сбросить тип при смене категории
+                setSelectedNodeId(Number(e.target.value));
+                setSelectedTypeId(0); // Сбросить тип при смене узла
               }}
+              disabled={loading}
             >
-              <option value="">Выберите категорию</option>
-              {faultCategories.map(category => (
-                <option key={category.id} value={category.id}>
-                  {category.name}
+              <option value={0}>Выберите узел</option>
+              {defectNodes.map(node => (
+                <option key={node.id} value={node.id}>
+                  {node.name}
                 </option>
               ))}
             </select>
           </div>
 
           <div className="form-group">
-            <label>НЕИСПРАВНОСТЬ:</label>
-            <select 
-              value={selectedFaultType} 
-              onChange={(e) => setSelectedFaultType(e.target.value)}
-              disabled={!selectedCategory}
+            <label>ТИП НЕИСПРАВНОСТИ:</label>
+            <select
+              value={selectedTypeId}
+              onChange={(e) => setSelectedTypeId(Number(e.target.value))}
+              disabled={loading || selectedNodeId === 0}
             >
-              <option value="">Выберите неисправность</option>
-              {filteredFaultTypes.map(fault => (
-                <option key={fault.id} value={fault.id}>
-                  {fault.name}
+              <option value={0}>Выберите тип неисправности</option>
+              {defectTypes.map(type => (
+                <option key={type.id} value={type.id}>
+                  {type.name}
                 </option>
               ))}
             </select>
@@ -106,19 +123,15 @@ const AddFaultModal: React.FC<Props> = ({ onClose, onAddFault }) => {
               onChange={(e) => setComment(e.target.value)}
               placeholder="Передний левый рычаг, пыльник порван"
               rows={3}
-            />
-            <textarea
-              value=""
-              onChange={() => {}}
-              placeholder="________________________________________________________"
-              rows={1}
-              readOnly
+              disabled={loading}
             />
           </div>
         </div>
 
         <div className="modal-footer">
-          <button className="add-button" onClick={handleAdd}>💾 ДОБАВИТЬ В СПИСОК</button>
+          <button className="add-button" onClick={handleAdd} disabled={loading}>
+            💾 ДОБАВИТЬ В СПИСОК
+          </button>
         </div>
       </div>
     </div>

@@ -81,52 +81,23 @@ const DiagnosticianDashboard: React.FC = () => {
   };
 
   // Функция для завершения диагностики
-  const handleDiagnosisComplete = async (faults: any[]) => {
-    console.log(`Диагностика для заказа #${selectedOrder} завершена. Неисправности:`, faults);
+  const handleDiagnosisComplete = async () => {
+    console.log(`Диагностика для заказа #${selectedOrder} завершена`);
 
     // Получаем ID диагноста из сессии пользователя
     const diagnosticianId = user?.id;
 
     if (selectedOrder && diagnosticianId) {
       try {
-        // Сначала сохраняем результаты диагностики
-        // Преобразуем список неисправностей в формат, подходящий для сохранения
-        const diagnosticResults = faults.map(fault => ({
-          id: 0, // будет сгенерирован в базе данных
-          order_id: selectedOrder,
-          diagnostician_id: diagnosticianId,
-          description: `${fault.category} / ${fault.type} - ${fault.comment}`,
-          created_at: new Date().toISOString()
-        }));
+        // Закрытие модального окна и обновление списка заказов происходят в DiagnosticsModal
+        console.log(`Результаты диагностики для заказа #${selectedOrder} сохранены в DiagnosticsModal`);
 
-        if (diagnosticResults.length > 0) {
-          // Передаем только описания неисправностей, а не полный объект DiagnosticResult
-          const defectDescriptions = diagnosticResults.map(d => d.description);
-          await invoke('save_diagnostic_results', {
-            orderId: selectedOrder,
-            diagnosticianId: diagnosticianId,
-            defects: defectDescriptions
-          });
-          console.log(`Результаты диагностики для заказа #${selectedOrder} сохранены`);
-        }
-
-        // Затем обновляем статус заказа на 'Parts_Selection', чтобы передать заказ кладовщику
-        const statusUpdateResult = await invoke('update_order_status', {
-          orderId: selectedOrder,
-          newStatus: 'Parts_Selection'
-        });
-        console.log(`Статус заказа #${selectedOrder} обновлён на 'Parts_Selection'. Результат:`, statusUpdateResult);
-
-        // После обновления статуса, обновляем список заказов
+        // После завершения диагностики обновляем список заказов, чтобы показать изменения
         fetchOrders();
       } catch (error) {
-        console.error('Ошибка при сохранении результатов диагностики или обновлении статуса:', error);
+        console.error('Ошибка при завершении диагностики:', error);
       }
     }
-
-    // Сбрасываем выбранный заказ, так как он больше не будет в списке
-    setSelectedOrder(null);
-    setShowDiagnosticsModal(false);
   };
 
   // Функция для закрытия модального окна
@@ -270,10 +241,11 @@ const DiagnosticianDashboard: React.FC = () => {
       </div>
 
       {/* Модальное окно диагностики */}
-      {showDiagnosticsModal && selectedOrder && (
+      {showDiagnosticsModal && selectedOrder && user && (
         <DiagnosticsModal
           orderId={selectedOrder}
           clientComplaint={orders.find(o => o.id === selectedOrder)?.complaint || ''}
+          diagnosticianId={user.id}
           onClose={handleCloseModal}
           onDiagnosisComplete={handleDiagnosisComplete}
         />

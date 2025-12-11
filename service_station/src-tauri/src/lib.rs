@@ -1,6 +1,7 @@
 use tauri::{Manager, async_runtime::block_on};
 use serde::{Deserialize, Serialize};
 use sqlx::Row;
+use sqlx::types::BigDecimal;
 
 mod database;
 use database::Database;
@@ -977,22 +978,177 @@ async fn delete_user(user_id: i32, state: tauri::State<'_, Database>) -> Result<
     Ok("User deleted successfully".to_string())
 }
 
+// Defect catalog management
+#[derive(Serialize, Deserialize, Clone)]
+struct DefectNode {
+    id: i32,
+    name: String,
+    description: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+struct DefectType {
+    id: i32,
+    node_id: i32,
+    node_name: String, // Include node name for easier UI display
+    name: String,
+    description: Option<String>,
+}
+
 #[tauri::command]
-async fn save_diagnostic_results(order_id: i32, diagnostician_id: i32, defects: Vec<String>, state: tauri::State<'_, Database>) -> Result<String, String> {
-    let defects_count = defects.len();
-    for defect_description in &defects {
-        let query = "INSERT INTO order_defects (order_id, diagnostician_id, defect_description, diagnostician_comment, is_confirmed) VALUES ($1, $2, $3, $4, $5)";
-        sqlx::query(query)
+async fn get_defect_nodes(state: tauri::State<'_, Database>) -> Result<Vec<DefectNode>, String> {
+    let query = "SELECT id, name, description FROM defect_nodes ORDER BY name";
+    let rows = sqlx::query(query)
+        .fetch_all(&state.pool)
+        .await
+        .map_err(|e| format!("Database error: {}", e))?;
+
+    let mut nodes = Vec::new();
+    for row in rows {
+        nodes.push(DefectNode {
+            id: row.get("id"),
+            name: row.get("name"),
+            description: row.get("description"),
+        });
+    }
+
+    Ok(nodes)
+}
+
+#[tauri::command]
+async fn get_defect_types_by_node(node_id: i32, state: tauri::State<'_, Database>) -> Result<Vec<DefectType>, String> {
+    let query = "SELECT dt.id, dt.node_id, dn.name as node_name, dt.name, dt.description
+                 FROM defect_types dt
+                 JOIN defect_nodes dn ON dt.node_id = dn.id
+                 WHERE dt.node_id = $1
+                 ORDER BY dt.name";
+    let rows = sqlx::query(query)
+        .bind(node_id)
+        .fetch_all(&state.pool)
+        .await
+        .map_err(|e| format!("Database error: {}", e))?;
+
+    let mut types = Vec::new();
+    for row in rows {
+        types.push(DefectType {
+            id: row.get("id"),
+            node_id: row.get("node_id"),
+            node_name: row.get("node_name"),
+            name: row.get("name"),
+            description: row.get("description"),
+        });
+    }
+
+    Ok(types)
+}
+
+#[tauri::command]
+async fn get_all_defect_types(state: tauri::State<'_, Database>) -> Result<Vec<DefectType>, String> {
+    let query = "SELECT dt.id, dt.node_id, dn.name as node_name, dt.name, dt.description
+                 FROM defect_types dt
+                 JOIN defect_nodes dn ON dt.node_id = dn.id
+                 ORDER BY dn.name, dt.name";
+    let rows = sqlx::query(query)
+        .fetch_all(&state.pool)
+        .await
+        .map_err(|e| format!("Database error: {}", e))?;
+
+    let mut types = Vec::new();
+    for row in rows {
+        types.push(DefectType {
+            id: row.get("id"),
+            node_id: row.get("node_id"),
+            node_name: row.get("node_name"),
+            name: row.get("name"),
+            description: row.get("description"),
+        });
+    }
+
+    Ok(types)
+}
+
+#[tauri::command]
+async fn save_diagnostic_results(order_id: i32, diagnostician_id: i32, defect_type_ids: Vec<i32>, state: tauri::State<'_, Database>) -> Result<String, String> {
+    let defects_count = defect_type_ids.len();
+    for defect_type_id in &defect_type_ids {
+        // Получаем информацию о типе неисправности
+        let defect_type_query = "SELECT dt.name, dt.description, dn.name as node_name
+                                 FROM defect_types dt
+                                 JOIN defect_nodes dn ON dt.node_id = dn.id
+                                 WHERE dt.id = $1";
+        let defect_type_row = sqlx::query(defect_type_query)
+            .bind(defect_type_id)
+            .fetch_one(&state.pool)
+            .await
+            .map_err(|e| format!("Database error fetching defect type: {}", e))?;
+
+        let defect_name: String = defect_type_row.get("name");
+        let defect_description: String = defect_type_row.get("description");
+        let node_name: String = defect_type_row.get("node_name");
+
+        // Вставляем неисправность, связанную с типом неисправности
+        let defect_query = "INSERT INTO order_defects (order_id, diagnostician_id, defect_description, diagnostician_comment, is_confirmed, defect_type_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id";
+        let defect_row = sqlx::query(defect_query)
             .bind(order_id)
             .bind(diagnostician_id)
-            .bind(defect_description)
-            .bind("") // diagnostician_comment пока пустой
+            .bind(format!("{}: {}", node_name, defect_name)) // формируем полное описание узел/неисправность
+            .bind(defect_description) // подробное описание
             .bind(false) // is_confirmed пока false
-            .execute(&state.pool)
+            .bind(defect_type_id)
+            .fetch_one(&state.pool)
             .await
-            .map_err(|e| format!("Database error: {}", e))?;
+            .map_err(|e| format!("Database error inserting defect: {}", e))?;
+
+        let defect_id: i32 = defect_row.get("id");
+
+        // Находим связанную услугу для этого типа неисправности
+        let service_query = "SELECT s.id, s.name, s.base_price, s.norm_hours
+                             FROM defect_type_services dts
+                             JOIN services_reference s ON dts.service_id = s.id
+                             WHERE dts.defect_type_id = $1
+                             LIMIT 1";
+        let service_row = sqlx::query(service_query)
+            .bind(defect_type_id)
+            .fetch_optional(&state.pool)
+            .await
+            .map_err(|e| format!("Database error fetching service for defect: {}", e))?;
+
+        // Если найдена связанная услуга, создаем работу на основе этой услуги
+        if let Some(service_row) = service_row {
+            let service_id: i32 = service_row.get("id");
+            let service_name: String = service_row.get("name");
+            let base_price: BigDecimal = service_row.get("base_price");
+            let norm_hours: BigDecimal = service_row.get("norm_hours");
+
+            // Создаем работу, связанную с этой услугой
+            let work_query = "INSERT INTO order_works (order_id, service_id, service_name_snapshot, price, norm_hours, defect_id, is_confirmed) VALUES ($1, $2, $3, $4::numeric, $5::numeric, $6, $7)";
+            sqlx::query(work_query)
+                .bind(order_id)
+                .bind(service_id)
+                .bind(service_name) // используем имя услуги как название работы
+                .bind(base_price) // используем базовую цену из справочника
+                .bind(norm_hours)
+                .bind(defect_id)
+                .bind(false) // is_confirmed пока false
+                .execute(&state.pool)
+                .await
+                .map_err(|e| format!("Database error inserting work: {}", e))?;
+        } else {
+            // Если нет связанной услуги, создаем работу с базовыми параметрами
+            let work_query = "INSERT INTO order_works (order_id, service_name_snapshot, price, norm_hours, defect_id, is_confirmed) VALUES ($1, $2, $3::numeric, $4::numeric, $5, $6)";
+            sqlx::query(work_query)
+                .bind(order_id)
+                .bind(format!("{}: {}", node_name, defect_name)) // используем узел/неисправность как название работы
+                .bind(BigDecimal::from(0)) // базовая цена 0 до согласования
+                .bind(BigDecimal::from(1)) // условная норма часов
+                .bind(defect_id)
+                .bind(false) // is_confirmed пока false
+                .execute(&state.pool)
+                .await
+                .map_err(|e| format!("Database error inserting work: {}", e))?;
+        }
     }
-    Ok(format!("{} diagnostic results saved for order {}", defects_count, order_id))
+    Ok(format!("{} diagnostic results saved for order {}, with corresponding works", defects_count, order_id))
 }
 
 #[tauri::command]
@@ -1132,7 +1288,10 @@ pub fn run() {
             get_available_workers,
             assign_workers_to_order,
             debug_order_status,
-            check_database_triggers
+            check_database_triggers,
+            get_defect_nodes,
+            get_defect_types_by_node,
+            get_all_defect_types
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

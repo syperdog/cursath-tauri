@@ -101,17 +101,19 @@ const AssignWorkersModal: React.FC<AssignWorkersModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validate that all works have assigned workers
-    const unassignedWorks = works.filter(work => !workAssignments[work.id]);
+    // Validate that all confirmed works have assigned workers
+    const confirmedWorks = works.filter(work => work.is_confirmed);
+    const unassignedWorks = confirmedWorks.filter(work => !workAssignments[work.id]);
     if (unassignedWorks.length > 0) {
-      alert('Пожалуйста, назначьте исполнителей для всех работ');
+      alert('Пожалуйста, назначьте исполнителей для всех подтвержденных работ');
       return;
     }
 
     setIsProcessing(true);
     try {
-      // Prepare work assignments for backend
-      const assignments: [number, number][] = works
+      // Prepare work assignments for backend (only for confirmed works)
+      const confirmedWorks = works.filter(work => work.is_confirmed);
+      const assignments: [number, number][] = confirmedWorks
         .filter(work => workAssignments[work.id])
         .map(work => [work.id, workAssignments[work.id]!]);
 
@@ -197,8 +199,8 @@ const AssignWorkersModal: React.FC<AssignWorkersModalProps> = ({
                   </tr>
                 </thead>
                 <tbody>
-                  {works.filter(work => work.is_confirmed).map(work => (
-                    <tr key={work.id}>
+                  {works.map(work => (
+                    <tr key={work.id} style={work.is_confirmed ? {} : { opacity: 0.6, fontStyle: 'italic' }}>
                       <td>{work.id}</td>
                       <td>{work.service_name_snapshot}</td>
                       <td>{parseFloat(work.price || '0').toFixed(2)} $</td>
@@ -222,14 +224,13 @@ const AssignWorkersModal: React.FC<AssignWorkersModalProps> = ({
                 </tbody>
               </table>
 
-              {works.filter(work => work.is_confirmed).length === 0 && (
+              {works.length === 0 && (
                 <div style={{ padding: '20px', textAlign: 'center', backgroundColor: '#fff3cd', border: '1px solid #ffeaa7' }}>
-                  <p><strong>Нет подтвержденных работ для назначения</strong></p>
+                  <p><strong>Нет работ для назначения</strong></p>
                   <p>Возможные причины:</p>
                   <ul style={{ textAlign: 'left', display: 'inline-block' }}>
-                    <li>Работы не были согласованы с клиентом</li>
-                    <li>Ошибка при сохранении согласования в базу данных</li>
-                    <li>Поле is_confirmed не обновилось в БД</li>
+                    <li>Работы не были добавлены через диагностику</li>
+                    <li>Ошибка при сохранении работ в базу данных</li>
                   </ul>
                 </div>
               )}
