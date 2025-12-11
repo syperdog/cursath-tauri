@@ -800,56 +800,6 @@ const MasterDashboard: React.FC = () => {
         />
       )}
 
-      {/* Кнопки для отладки */}
-      {selectedOrder && selectedOrder.status === 'Approval' && (
-        <div style={{ position: 'fixed', top: '10px', right: '10px', zIndex: 9999, display: 'flex', flexDirection: 'column', gap: '5px' }}>
-          <button
-            onClick={async () => {
-              try {
-                const debugInfo = await invoke<string>('debug_order_status', { orderId: selectedOrder.id });
-                console.log('Debug order info:', debugInfo);
-                alert('Debug info (см. консоль):\n' + debugInfo);
-              } catch (error) {
-                console.error('Debug: Error getting order status:', error);
-              }
-            }}
-            style={{ 
-              padding: '8px', 
-              backgroundColor: '#28a745', 
-              color: 'white', 
-              border: 'none', 
-              borderRadius: '4px',
-              cursor: 'pointer',
-              fontSize: '12px'
-            }}
-          >
-            🔍 Проверить статус заказа
-          </button>
-          <button
-            onClick={async () => {
-              try {
-                const works = await invoke<any[]>('get_order_works_by_order_id', { orderId: selectedOrder.id });
-                console.log('Debug: Loaded works for assignment:', works);
-                setOrderWorks(works);
-                setShowAssignWorkersModal(true);
-              } catch (error) {
-                console.error('Debug: Error loading works:', error);
-              }
-            }}
-            style={{ 
-              padding: '8px', 
-              backgroundColor: '#007bff', 
-              color: 'white', 
-              border: 'none', 
-              borderRadius: '4px',
-              cursor: 'pointer',
-              fontSize: '12px'
-            }}
-          >
-            🔧 Назначить работников
-          </button>
-        </div>
-      )}
 
       {selectedOrder && showClientApprovalModal && (
         <ClientApprovalModal

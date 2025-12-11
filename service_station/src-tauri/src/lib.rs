@@ -1805,31 +1805,53 @@ async fn save_diagnostic_results(order_id: i32, diagnostician_id: i32, defect_ty
             let norm_hours: BigDecimal = service_row.get("norm_hours");
 
             // Создаем работу, связанную с этой услугой
-            let work_query = "INSERT INTO order_works (order_id, service_id, service_name_snapshot, price, norm_hours, defect_id, is_confirmed) VALUES ($1, $2, $3, $4::numeric, $5::numeric, $6, $7)";
-            sqlx::query(work_query)
+            let work_query = "INSERT INTO order_works (order_id, service_id, service_name_snapshot, price, norm_hours, is_confirmed) VALUES ($1, $2, $3, $4::numeric, $5::numeric, $6) RETURNING id";
+            let work_row = sqlx::query(work_query)
                 .bind(order_id)
                 .bind(service_id)
                 .bind(service_name) // используем имя услуги как название работы
                 .bind(base_price) // используем базовую цену из справочника
                 .bind(norm_hours)
-                .bind(defect_id)
                 .bind(false) // is_confirmed пока false
-                .execute(&state.pool)
+                .fetch_one(&state.pool)
                 .await
                 .map_err(|e| format!("Database error inserting work: {}", e))?;
+
+            // Получаем ID созданной работы
+            let work_id: i32 = work_row.get("id");
+
+            // Создаем связь между работой и неисправностью в отдельной таблице
+            let work_defect_query = "INSERT INTO order_works_defects (work_id, defect_id) VALUES ($1, $2)";
+            sqlx::query(work_defect_query)
+                .bind(work_id)
+                .bind(defect_id)
+                .execute(&state.pool)
+                .await
+                .map_err(|e| format!("Database error linking work to defect: {}", e))?;
         } else {
             // Если нет связанной услуги, создаем работу с базовыми параметрами
-            let work_query = "INSERT INTO order_works (order_id, service_name_snapshot, price, norm_hours, defect_id, is_confirmed) VALUES ($1, $2, $3::numeric, $4::numeric, $5, $6)";
-            sqlx::query(work_query)
+            let work_query = "INSERT INTO order_works (order_id, service_name_snapshot, price, norm_hours, is_confirmed) VALUES ($1, $2, $3::numeric, $4::numeric, $5) RETURNING id";
+            let work_row = sqlx::query(work_query)
                 .bind(order_id)
                 .bind(format!("{}: {}", node_name, defect_name)) // используем узел/неисправность как название работы
                 .bind(BigDecimal::from(0)) // базовая цена 0 до согласования
                 .bind(BigDecimal::from(1)) // условная норма часов
-                .bind(defect_id)
                 .bind(false) // is_confirmed пока false
-                .execute(&state.pool)
+                .fetch_one(&state.pool)
                 .await
                 .map_err(|e| format!("Database error inserting work: {}", e))?;
+
+            // Получаем ID созданной работы
+            let work_id: i32 = work_row.get("id");
+
+            // Создаем связь между работой и неисправностью в отдельной таблице
+            let work_defect_query = "INSERT INTO order_works_defects (work_id, defect_id) VALUES ($1, $2)";
+            sqlx::query(work_defect_query)
+                .bind(work_id)
+                .bind(defect_id)
+                .execute(&state.pool)
+                .await
+                .map_err(|e| format!("Database error linking work to defect: {}", e))?;
         }
     }
     Ok(format!("{} diagnostic results saved for order {}, with corresponding works", defects_count, order_id))
