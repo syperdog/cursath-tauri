@@ -97,9 +97,17 @@ const AssignWorkersModal: React.FC<AssignWorkersModalProps> = ({
 
     setIsProcessing(true);
     try {
+      // Получаем токен сессии из localStorage
+      const sessionToken = localStorage.getItem('sessionToken');
+      if (!sessionToken) {
+        alert('Сессия не найдена. Пожалуйста, войдите в систему.');
+        return;
+      }
+
       // Send assignment to backend with main worker
       // We'll pass an empty array for work assignments since we're only assigning the main worker
       await invoke('assign_workers_to_order', {
+        sessionToken,
         orderId: order.id,
         workAssignments: [], // Не назначаем индивидуальные работы, только основного исполнителя
         mainWorkerId: selectedWorkerId

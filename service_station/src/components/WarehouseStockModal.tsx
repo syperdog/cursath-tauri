@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import AddWarehouseItemModal from './AddWarehouseItemModal';
 import './WarehouseStockModal.css';
 
 interface WarehouseItem {
@@ -23,6 +24,7 @@ const WarehouseStockModal: React.FC<WarehouseStockModalProps> = ({ isOpen, onClo
   const [warehouseItems, setWarehouseItems] = useState<WarehouseItem[]>([]);
   const [filteredItems, setFilteredItems] = useState<WarehouseItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showAddItemModal, setShowAddItemModal] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -164,11 +166,20 @@ const WarehouseStockModal: React.FC<WarehouseStockModalProps> = ({ isOpen, onClo
         </div>
 
         <div className="modal-actions">
-          <button className="secondary-btn">📥 ДОБАВИТЬ ПОЗИЦИЮ</button>
+          <button className="secondary-btn" onClick={() => setShowAddItemModal(true)}>➕ ДОБАВИТЬ ПОЗИЦИЮ</button>
           <button className="primary-btn">➕ ЗАКАЗАТЬ У ПОСТАВЩИКА</button>
         </div>
       </div>
     </div>
+
+    {showAddItemModal && (
+      <AddWarehouseItemModal
+        isOpen={showAddItemModal}
+        onClose={() => setShowAddItemModal(false)}
+        onItemAdded={() => loadWarehouseStock()} // Перезагружаем список после добавления
+      />
+    )}
+  </div>
   );
 };
 

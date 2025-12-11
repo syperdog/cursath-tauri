@@ -1028,7 +1028,13 @@ async fn get_orders_for_diagnostician(state: tauri::State<'_, Database>) -> Resu
 }
 
 #[tauri::command]
-async fn add_part_to_order(order_id: i32, part_name: String, brand: String, supplier: String, price: f64, _availability: String, _part_number: String, state: tauri::State<'_, Database>) -> Result<String, String> {
+async fn add_part_to_order(session_token: String, order_id: i32, part_name: String, brand: String, supplier: String, price: f64, _availability: String, _part_number: String, state: tauri::State<'_, Database>) -> Result<String, String> {
+    // Получаем информацию о пользователе из сессии
+    let user = {
+        let sessions = SESSIONS.lock().map_err(|_| "Session lock error")?;
+        sessions.get(&session_token).cloned().ok_or("Invalid session token")?
+    };
+
     // Добавляем запчасть в таблицу order_parts
     let query = "INSERT INTO order_parts (order_id, part_name_snapshot, brand, supplier, price_per_unit, source_type) VALUES ($1, $2, $3, $4, $5::numeric, 'Supplier')";
     sqlx::query(query)
@@ -1041,7 +1047,74 @@ async fn add_part_to_order(order_id: i32, part_name: String, brand: String, supp
         .await
         .map_err(|e| format!("Database error: {}", e))?;
 
+    // Логируем добавление запчасти в заказ
+    let log_result = log_event(
+        Some(user.id),
+        "Add_Part_To_Order".to_string(),
+        format!("Добавлена запчасть '{}' (бренд: {}, поставщик: {}) в заказ {} за {} руб.",
+                part_name, brand, supplier, order_id, price),
+        None, // IP-адрес пока не реализован
+        state.clone()
+    ).await;
+
+    if let Err(e) = log_result {
+        eprintln!("Error logging part addition: {}", e);
+    }
+
     Ok(format!("Part '{}' added to order {}", part_name, order_id))
+}
+
+#[tauri::command]
+async fn add_warehouse_item(
+    session_token: String,
+    name: String,
+    brand: String,
+    article: String,
+    location_cell: String,
+    quantity: i32,
+    min_quantity: i32,
+    purchase_price: f64,
+    selling_price: f64,
+    state: tauri::State<'_, Database>
+) -> Result<String, String> {
+    // Получаем информацию о пользователе из сессии
+    let user = {
+        let sessions = SESSIONS.lock().map_err(|_| "Session lock error")?;
+        sessions.get(&session_token).cloned().ok_or("Invalid session token")?
+    };
+
+    // Добавляем новую позицию на склад
+    let query = "INSERT INTO warehouse (name, brand, article, location_cell, quantity, min_quantity, purchase_price, selling_price) VALUES ($1, $2, $3, $4, $5, $6, $7::numeric, $8::numeric) RETURNING id";
+    let row = sqlx::query(query)
+        .bind(&name)
+        .bind(&brand)
+        .bind(&article)
+        .bind(&location_cell)
+        .bind(quantity)
+        .bind(min_quantity)
+        .bind(purchase_price)
+        .bind(selling_price)
+        .fetch_one(&state.pool)
+        .await
+        .map_err(|e| format!("Database error: {}", e))?;
+
+    let new_id: i32 = row.get("id");
+
+    // Логируем добавление новой позиции на склад
+    let log_result = log_event(
+        Some(user.id),
+        "Add_Warehouse_Item".to_string(),
+        format!("Добавлена новая позиция на склад: '{}' (бренд: {}, артикул: {}) с ID {}",
+                name, brand, article, new_id),
+        None, // IP-адрес пока не реализован
+        state.clone()
+    ).await;
+
+    if let Err(e) = log_result {
+        eprintln!("Error logging warehouse item addition: {}", e);
+    }
+
+    Ok(format!("Новая позиция добавлена на склад с ID: {}", new_id))
 }
 
 #[tauri::command]
@@ -1205,11 +1278,18 @@ async fn debug_order_status(order_id: i32, state: tauri::State<'_, Database>) ->
 
 #[tauri::command]
 async fn assign_workers_to_order(
+    session_token: String,
     order_id: i32,
     work_assignments: Vec<(i32, i32)>, // (work_id, worker_id) pairs
     main_worker_id: Option<i32>, // Optional main worker for the entire order
     state: tauri::State<'_, Database>
 ) -> Result<String, String> {
+    // Получаем информацию о пользователе из сессии
+    let user = {
+        let sessions = SESSIONS.lock().map_err(|_| "Session lock error")?;
+        sessions.get(&session_token).cloned().ok_or("Invalid session token")?
+    };
+
     // Назначаем работников на работы
     for (work_id, worker_id) in &work_assignments {
         let query = "UPDATE order_works SET worker_id = $1, status = 'Pending' WHERE id = $2 AND order_id = $3";
@@ -1249,6 +1329,20 @@ async fn assign_workers_to_order(
         .await
         .map_err(|e| format!("Database transaction commit error: {}", e))?;
 
+    // Логируем назначение работников к заказу
+    let log_result = log_event(
+        Some(user.id),
+        "Assign_Workers".to_string(),
+        format!("Назначены работники к заказу {}: {} работников, основной исполнитель: {:?}",
+                order_id, work_assignments.len(), main_worker_id),
+        None, // IP-адрес пока не реализован
+        state.clone()
+    ).await;
+
+    if let Err(e) = log_result {
+        eprintln!("Error logging worker assignment: {}", e);
+    }
+
     Ok(format!("Workers assigned to order {} for {} works{}",
         order_id,
         work_assignments.len(),
@@ -1260,7 +1354,13 @@ async fn assign_workers_to_order(
 }
 
 #[tauri::command]
-async fn create_order(client_id: i32, car_id: i32, complaint: Option<String>, current_mileage: Option<i32>, state: tauri::State<'_, Database>) -> Result<String, String> {
+async fn create_order(session_token: String, client_id: i32, car_id: i32, complaint: Option<String>, current_mileage: Option<i32>, state: tauri::State<'_, Database>) -> Result<String, String> {
+    // Получаем информацию о пользователе из сессии
+    let user = {
+        let sessions = SESSIONS.lock().map_err(|_| "Session lock error")?;
+        sessions.get(&session_token).cloned().ok_or("Invalid session token")?
+    };
+
     // Insert a new order into the database with status 'Diagnostics'
     let query = "INSERT INTO orders (client_id, car_id, master_id, status, complaint, current_mileage, prepayment, total_amount, created_at) VALUES ($1, $2, NULL, 'Diagnostics', $3, $4, 0, 0, NOW()) RETURNING id";
     let row = sqlx::query(query)
@@ -1273,6 +1373,20 @@ async fn create_order(client_id: i32, car_id: i32, complaint: Option<String>, cu
         .map_err(|e| format!("Database error: {}", e))?;
 
     let order_id: i32 = row.get("id");
+
+    // Логируем создание заказа
+    let log_result = log_event(
+        Some(user.id),
+        "Create_Order".to_string(),
+        format!("Создан новый заказ с ID {} для клиента {} и автомобиля {}", order_id, client_id, car_id),
+        None, // IP-адрес пока не реализован
+        state.clone()
+    ).await;
+
+    if let Err(e) = log_result {
+        eprintln!("Error logging order creation: {}", e);
+    }
+
     Ok(format!("Order created successfully with ID: {}", order_id))
 }
 
@@ -1951,6 +2065,7 @@ pub fn run() {
             get_system_logs,
             search_parts_by_vin,
             add_part_to_order,
+            add_warehouse_item,
             confirm_order_parts_and_works,
             get_available_workers,
             assign_workers_to_order,

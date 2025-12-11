@@ -58,8 +58,16 @@ const NewOrderModal: React.FC<NewOrderModalProps> = ({
     }
 
     try {
+      // Получаем токен сессии из localStorage
+      const sessionToken = localStorage.getItem('sessionToken');
+      if (!sessionToken) {
+        alert('Сессия не найдена. Пожалуйста, войдите в систему.');
+        return;
+      }
+
       // Send the data to the backend to create the order
       const result = await invoke<string>('create_order', {
+        sessionToken,
         clientId: client?.id,
         carId: car?.id,
         complaint,

@@ -223,10 +223,18 @@ const StorekeeperDashboard: React.FC = () => {
 
     if (selectedOrderForParts) {
       try {
+        // Получаем токен сессии из localStorage
+        const sessionToken = localStorage.getItem('sessionToken');
+        if (!sessionToken) {
+          alert('Сессия не найдена. Пожалуйста, войдите в систему.');
+          return;
+        }
+
         // Сохраняем выбранные запчасти в заказ
         for (const part of selectedParts) {
           // В реальном приложении здесь будет вызов API для сохранения запчасти в заказ
           await invoke('add_part_to_order', {
+            sessionToken,
             orderId: selectedOrderForParts.id,
             partName: part.name,
             brand: part.brand,
@@ -235,13 +243,6 @@ const StorekeeperDashboard: React.FC = () => {
             availability: part.availability,
             partNumber: part.part_number
           });
-        }
-
-        // Получаем токен сессии из localStorage
-        const sessionToken = localStorage.getItem('sessionToken');
-        if (!sessionToken) {
-          alert('Сессия не найдена. Пожалуйста, войдите в систему.');
-          return;
         }
 
         // Изменяем статус заказа на "Approval"
