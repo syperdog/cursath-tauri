@@ -623,10 +623,16 @@ const MasterDashboard: React.FC = () => {
             <button onClick={() => navigateMonth('next')}>▶</button>
             <button className="archive-btn" onClick={toggleArchiveView}>🗄️ АРХИВ</button>
             <button
-              className="new-order-btn"
-              onClick={() => handleCreateNewOrder(null, null)}
+              className="new-client-btn"
+              onClick={() => setShowNewClientModal(true)}
             >
-              ➕ НОВЫЙ ЗАКАЗ
+              👤 НОВЫЙ КЛИЕНТ
+            </button>
+            <button
+              className="new-car-btn"
+              onClick={() => setShowNewCarModal(true)}
+            >
+              🚗 НОВАЯ МАШИНА
             </button>
           </div>
 

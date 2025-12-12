@@ -1397,6 +1397,245 @@ async fn create_order(session_token: String, client_id: i32, car_id: i32, compla
 }
 
 #[tauri::command]
+async fn create_client(
+    session_token: String,
+    full_name: String,
+    phone: String,
+    address: Option<String>,
+    state: tauri::State<'_, Database>
+) -> Result<String, String> {
+    // Получаем информацию о пользователе из сессии
+    let user = {
+        let sessions = SESSIONS.lock().map_err(|_| "Session lock error")?;
+        sessions.get(&session_token).cloned().ok_or("Invalid session token")?
+    };
+
+    // Проверяем, что обязательные поля заполнены
+    if full_name.trim().is_empty() {
+        return Err("ФИО клиента не может быть пустым".to_string());
+    }
+
+    if phone.trim().is_empty() {
+        return Err("Телефон клиента не может быть пустым".to_string());
+    }
+
+    // Проверяем, существует ли уже клиент с таким телефоном
+    let check_query = "SELECT id FROM clients WHERE phone = $1";
+    let existing_client = sqlx::query(check_query)
+        .bind(&phone)
+        .fetch_optional(&state.pool)
+        .await
+        .map_err(|e| format!("Database error checking existing client: {}", e))?;
+
+    if existing_client.is_some() {
+        return Err("Клиент с таким телефоном уже существует".to_string());
+    }
+
+    // Вставляем нового клиента в базу данных
+    let query = "INSERT INTO clients (full_name, phone, address) VALUES ($1, $2, $3) RETURNING id";
+    let row = sqlx::query(query)
+        .bind(&full_name)
+        .bind(&phone)
+        .bind(&address)
+        .fetch_one(&state.pool)
+        .await
+        .map_err(|e| format!("Database error: {}", e))?;
+
+    let client_id: i32 = row.get("id");
+
+    // Логируем создание клиента
+    let log_result = log_event(
+        Some(user.id),
+        "Create_Client".to_string(),
+        format!("Создан новый клиент '{}' с ID {} и телефоном {}", full_name, client_id, phone),
+        None, // IP-адрес пока не реализован
+        state.clone()
+    ).await;
+
+    if let Err(e) = log_result {
+        eprintln!("Error logging client creation: {}", e);
+    }
+
+    Ok(format!("Клиент успешно создан с ID: {}", client_id))
+}
+
+#[tauri::command]
+async fn get_all_clients(state: tauri::State<'_, Database>) -> Result<Vec<Client>, String> {
+    let query = "SELECT id, full_name, phone, address, created_at::text FROM clients ORDER BY full_name";
+    let rows = sqlx::query(query)
+        .fetch_all(&state.pool)
+        .await
+        .map_err(|e| format!("Database error: {}", e))?;
+
+    let mut clients = Vec::new();
+    for row in rows {
+        clients.push(Client {
+            id: row.get("id"),
+            full_name: row.get("full_name"),
+            phone: row.get("phone"),
+            address: row.get("address"),
+            created_at: row.get("created_at"),
+        });
+    }
+
+    Ok(clients)
+}
+
+#[tauri::command]
+async fn create_car(
+    session_token: String,
+    client_id: Option<i32>,
+    vin: Option<String>,
+    license_plate: Option<String>,
+    make: String,
+    model: String,
+    production_year: Option<i32>,
+    mileage: i32,
+    state: tauri::State<'_, Database>
+) -> Result<String, String> {
+    // Получаем информацию о пользователе из сессии
+    let user = {
+        let sessions = SESSIONS.lock().map_err(|_| "Session lock error")?;
+        sessions.get(&session_token).cloned().ok_or("Invalid session token")?
+    };
+
+    // Проверяем, что обязательные поля заполнены
+    if make.trim().is_empty() {
+        return Err("Марка автомобиля не может быть пустой".to_string());
+    }
+
+    if model.trim().is_empty() {
+        return Err("Модель автомобиля не может быть пустой".to_string());
+    }
+
+    if license_plate.is_none() || license_plate.as_ref().unwrap().trim().is_empty() {
+        return Err("Государственный номер не может быть пустым".to_string());
+    }
+
+    // Проверяем, существует ли уже автомобиль с таким VIN или госномером
+    let mut conditions = Vec::new();
+    let mut params = Vec::new();
+    let mut param_count = 1;
+
+    if let Some(vin_value) = &vin {
+        if !vin_value.is_empty() {
+            conditions.push(format!("vin = ${}", param_count));
+            params.push(vin_value);
+            param_count += 1;
+        }
+    }
+
+    if let Some(plate_value) = &license_plate {
+        let plate_condition = format!("license_plate = ${}", param_count);
+        params.push(plate_value);
+        conditions.push(plate_condition);
+    }
+
+    if !conditions.is_empty() {
+        let check_query = format!(
+            "SELECT id FROM cars WHERE {}",
+            conditions.join(" OR ")
+        );
+
+        let mut query_builder = sqlx::QueryBuilder::new(&check_query);
+
+        // Привязываем параметры по одному
+        for param in &params {
+            query_builder.push_bind(param);
+        }
+
+        let query = query_builder.build();
+
+        let existing_car = query
+            .fetch_optional(&state.pool)
+            .await
+            .map_err(|e| format!("Database error checking existing car: {}", e))?;
+
+        if existing_car.is_some() {
+            return Err("Автомобиль с таким VIN или госномером уже существует".to_string());
+        }
+    }
+
+    // Если указан ID клиента, проверим его существование
+    let actual_client_id = if let Some(cid) = client_id {
+        let client_check_query = "SELECT id FROM clients WHERE id = $1";
+        let existing_client = sqlx::query(client_check_query)
+            .bind(cid)
+            .fetch_optional(&state.pool)
+            .await
+            .map_err(|e| format!("Database error checking client: {}", e))?;
+
+        if existing_client.is_none() {
+            return Err("Указанный клиент не существует".to_string());
+        }
+        Some(cid)
+    } else {
+        // Если клиент не указан, создаем автомобиль без привязки к клиенту
+        None
+    };
+
+    // Вставляем новый автомобиль в базу данных
+    let mut insert_query = sqlx::QueryBuilder::new("INSERT INTO cars (client_id, vin, license_plate, make, model, production_year, mileage) VALUES ");
+    insert_query.push("(");
+    if let Some(client_id_val) = actual_client_id {
+        insert_query.push_bind(client_id_val);
+    } else {
+        insert_query.push("NULL");
+    }
+    insert_query.push(", ");
+    if let Some(vin_val) = &vin {
+        insert_query.push_bind(vin_val);
+    } else {
+        insert_query.push("NULL");
+    }
+    insert_query.push(", ");
+    if let Some(plate_val) = &license_plate {
+        insert_query.push_bind(plate_val);
+    } else {
+        insert_query.push("NULL");
+    }
+    insert_query.push(", ");
+    insert_query.push_bind(&make);
+    insert_query.push(", ");
+    insert_query.push_bind(&model);
+    insert_query.push(", ");
+    if let Some(year_val) = &production_year {
+        insert_query.push_bind(year_val);
+    } else {
+        insert_query.push("NULL");
+    }
+    insert_query.push(", ");
+    insert_query.push_bind(&mileage);
+    insert_query.push(") RETURNING id");
+
+    let query = insert_query.build();
+    let row = query
+        .fetch_one(&state.pool)
+        .await
+        .map_err(|e| format!("Database error: {}", e))?;
+
+    let car_id: i32 = row.get("id");
+
+    // Логируем создание автомобиля
+    let log_result = log_event(
+        Some(user.id),
+        "Create_Car".to_string(),
+        format!("Создан новый автомобиль '{}' '{}' с ID {}, госномер: {}, VIN: {}",
+                make, model, car_id,
+                license_plate.as_deref().unwrap_or("N/A"),
+                vin.as_deref().unwrap_or("N/A")),
+        None, // IP-адрес пока не реализован
+        state.clone()
+    ).await;
+
+    if let Err(e) = log_result {
+        eprintln!("Error logging car creation: {}", e);
+    }
+
+    Ok(format!("Автомобиль успешно создан с ID: {}", car_id))
+}
+
+#[tauri::command]
 async fn get_diagnostic_results_by_order_id(order_id: i32, state: tauri::State<'_, Database>) -> Result<Vec<OrderDefect>, String> {
     // Query to get diagnostic results for a specific order from the correct table
     let query = "SELECT id, order_id, diagnostician_id, defect_description, diagnostician_comment, is_confirmed FROM order_defects WHERE order_id = $1";
@@ -2084,6 +2323,9 @@ pub fn run() {
             get_order_parts_by_order_id,
             search_orders_clients_cars,
             create_order,
+            create_client,
+            create_car,
+            get_all_clients,
             get_all_users,
             create_user,
             update_user,
