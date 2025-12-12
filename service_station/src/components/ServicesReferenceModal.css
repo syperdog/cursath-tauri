@@ -196,7 +196,8 @@
 
 .service-selection-section,
 .node-selection-section,
-.defect-creation-section {
+.defect-creation-section,
+.existing-services-section {
   margin-bottom: 25px;
   padding-bottom: 20px;
   border-bottom: 1px solid #eee;
@@ -204,10 +205,36 @@
 
 .service-selection-section h3,
 .node-selection-section h3,
-.defect-creation-section h3 {
+.defect-creation-section h3,
+.existing-services-section h3 {
   margin-top: 0;
   color: #2c3e50;
   margin-bottom: 15px;
+}
+
+.existing-services-section .services-list-container {
+  max-height: 300px;
+  overflow-y: auto;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.existing-services-section .services-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.existing-services-section .services-table th,
+.existing-services-section .services-table td {
+  padding: 10px;
+  text-align: left;
+  border-bottom: 1px solid #ddd;
+}
+
+.existing-services-section .services-table th {
+  background-color: #ecf0f1;
+  font-weight: bold;
+  color: #2c3e50;
 }
 
 /* Responsive design */

@@ -62,7 +62,8 @@ const ServicesReferenceModal: React.FC<ServicesReferenceModalProps> = ({ isOpen,
     comment: ''
   });
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false); // Для состояния формы
+  const [loadingServices, setLoadingServices] = useState(true); // Для загрузки списка услуг
 
   useEffect(() => {
     if (isOpen) {
@@ -73,23 +74,26 @@ const ServicesReferenceModal: React.FC<ServicesReferenceModalProps> = ({ isOpen,
 
   const loadDefectNodes = async () => {
     try {
+      setLoadingServices(true); // Используем то же состояние, что и для загрузки услуг
       const nodes = await invoke<DefectNode[]>('get_defect_nodes');
       setDefectNodes(nodes);
     } catch (error) {
       console.error('Error loading defect nodes:', error);
+    } finally {
+      setLoadingServices(false);
     }
   };
 
   const loadServices = async () => {
     try {
-      setLoading(true);
+      setLoadingServices(true);
       const servicesData = await invoke<Service[]>('get_all_services');
       setServices(servicesData);
     } catch (error) {
       console.error('Error loading services:', error);
       alert('Ошибка при загрузке услуг: ' + error);
     } finally {
-      setLoading(false);
+      setLoadingServices(false);
     }
   };
 
@@ -100,6 +104,7 @@ const ServicesReferenceModal: React.FC<ServicesReferenceModalProps> = ({ isOpen,
     }
 
     try {
+      setLoading(true); // Устанавливаем состояние загрузки при создании новой услуги
       // Получаем токен сессии из localStorage
       const sessionToken = localStorage.getItem('sessionToken');
       if (!sessionToken) {
@@ -123,6 +128,8 @@ const ServicesReferenceModal: React.FC<ServicesReferenceModalProps> = ({ isOpen,
     } catch (error) {
       console.error('Error creating service:', error);
       alert('Ошибка при создании услуги: ' + error);
+    } finally {
+      setLoading(false); // Сбрасываем состояние загрузки
     }
   };
 
@@ -133,6 +140,7 @@ const ServicesReferenceModal: React.FC<ServicesReferenceModalProps> = ({ isOpen,
     }
 
     try {
+      setLoading(true); // Устанавливаем состояние загрузки при создании нового узла
       // Получаем токен сессии из localStorage
       const sessionToken = localStorage.getItem('sessionToken');
       if (!sessionToken) {
@@ -157,6 +165,8 @@ const ServicesReferenceModal: React.FC<ServicesReferenceModalProps> = ({ isOpen,
     } catch (error) {
       console.error('Error creating defect node:', error);
       alert('Ошибка при создании узла: ' + error);
+    } finally {
+      setLoading(false); // Сбрасываем состояние загрузки
     }
   };
 
@@ -177,6 +187,7 @@ const ServicesReferenceModal: React.FC<ServicesReferenceModalProps> = ({ isOpen,
     }
 
     try {
+      setLoading(true); // Устанавливаем состояние загрузки при создании новой неисправности
       // Получаем токен сессии из localStorage
       const sessionToken = localStorage.getItem('sessionToken');
       if (!sessionToken) {
@@ -201,6 +212,8 @@ const ServicesReferenceModal: React.FC<ServicesReferenceModalProps> = ({ isOpen,
     } catch (error) {
       console.error('Error creating defect:', error);
       alert('Ошибка при создании неисправности: ' + error);
+    } finally {
+      setLoading(false); // Сбрасываем состояние загрузки
     }
   };
 
@@ -402,6 +415,37 @@ const ServicesReferenceModal: React.FC<ServicesReferenceModalProps> = ({ isOpen,
             >
               🛠️ СОЗДАТЬ НЕИСПРАВНОСТЬ
             </button>
+          </div>
+
+          {/* Список существующих услуг */}
+          <div className="existing-services-section">
+            <h3>📋 СУЩЕСТВУЮЩИЕ УСЛУГИ</h3>
+            {loadingServices ? (
+              <p>Загрузка услуг...</p>
+            ) : services.length === 0 ? (
+              <p>Нет сохраненных услуг</p>
+            ) : (
+              <div className="services-list-container">
+                <table className="services-table">
+                  <thead>
+                    <tr>
+                      <th>Название</th>
+                      <th>Цена</th>
+                      <th>Нормо-часы</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {services.map(service => (
+                      <tr key={service.id}>
+                        <td>{service.name}</td>
+                        <td>{parseFloat(service.base_price).toFixed(2)}</td>
+                        <td>{parseFloat(service.norm_hours).toFixed(2)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </div>
       </div>
