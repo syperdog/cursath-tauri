@@ -72,7 +72,7 @@ const LoginForm: React.FC = () => {
   return (
     <div className="login-container">
       <div className="login-form-wrapper">
-        <h1 className="app-title">🛠️ AutoService Pro v2.0</h1>
+        <h1 className="app-title"></h1>
 
         {isPinMode ? (
           <div className="login-form pin-mode">

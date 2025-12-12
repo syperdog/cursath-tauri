@@ -407,6 +407,40 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
                       setLogsLoading(false);
                     }
                   }}>🔍</button>
+                  <button className="export-btn" onClick={async () => {
+                    try {
+                      // Export all logs to CSV
+                      const filters = {
+                        filter: (document.getElementById('log-filter') as HTMLSelectElement).value,
+                        search: (document.getElementById('log-search') as HTMLInputElement).value
+                      };
+                      const logsData: string = await invoke('get_system_logs', {
+                        filters: JSON.stringify(filters)
+                      });
+                      const logsJson = JSON.parse(logsData);
+
+                      // Convert JSON to CSV
+                      const headers = Object.keys(logsJson[0] || {});
+                      const csvContent = [
+                        headers.join(','),
+                        ...logsJson.map(row => headers.map(header => `"${row[header] || ''}"`).join(','))
+                      ].join('\n');
+
+                      // Create download link
+                      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                      const link = document.createElement('a');
+                      const url = URL.createObjectURL(blob);
+                      link.setAttribute('href', url);
+                      link.setAttribute('download', `logs_${new Date().toISOString().slice(0, 19)}.csv`);
+                      link.style.visibility = 'hidden';
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
+                    } catch (err) {
+                      console.error('Error exporting logs:', err);
+                      setError('Ошибка экспорта логов: ' + (err as Error).message);
+                    }
+                  }}>📥 Экспорт в CSV</button>
                 </div>
               </div>
 
@@ -437,9 +471,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
                 </table>
               )}
 
-              <div className="logs-actions">
-                <button className="export-btn">📥 Экспорт в CSV</button>
-              </div>
             </div>
           )}
 
