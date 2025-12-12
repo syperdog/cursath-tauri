@@ -71,7 +71,7 @@ const MasterDashboard: React.FC = () => {
   const [showArchive, setShowArchive] = useState(false);
   const [archivedOrders, setArchivedOrders] = useState<Order[]>([]);
   const [archiveFilter, setArchiveFilter] = useState<{ periodStart: string, periodEnd: string, status: string, search: string }>({
-    periodStart: '2024-01-01',
+    periodStart: '2020-01-01', // Расширяем начальную дату для отображения всех возможных заказов
     periodEnd: new Date().toISOString().split('T')[0],
     status: 'All',
     search: ''
@@ -332,9 +332,15 @@ const MasterDashboard: React.FC = () => {
         handleCreateNewOrder(item as Client, null);
       }
     } else if ('license_plate' in item) { // Это автомобиль
-      // Найдем клиента для этого автомобиля
-      const client = clients[(item as Car).client_id] || null;
-      handleCreateNewOrder(client, item as Car);
+      // Загрузим информацию о клиенте напрямую из базы данных
+      try {
+        const client = await invoke<Client | null>('get_client_by_id', { clientId: (item as Car).client_id });
+        handleCreateNewOrder(client, item as Car);
+      } catch (error) {
+        console.error(`Error loading client for car ${item.id}:`, error);
+        // Если не удалось загрузить клиента, все равно открываем заказ с автомобилем
+        handleCreateNewOrder(null, item as Car);
+      }
     } else { // Это заказ
       // Найдем клиента и автомобиль для этого заказа
       const order = item as Order;
@@ -469,7 +475,27 @@ const MasterDashboard: React.FC = () => {
 
     // Загружаем архивные заказы при открытии вкладки архива
     if (newShowArchive) {
-      await loadArchivedOrders();
+      // Устанавливаем широкий диапазон дат для отображения всех архивных заказов
+      const newArchiveFilter = {
+        ...archiveFilter,
+        periodStart: '2020-01-01', // Устанавливаем широкий диапазон по умолчанию
+        periodEnd: new Date().toISOString().split('T')[0],
+        status: 'All'
+      };
+      setArchiveFilter(newArchiveFilter);
+
+      // Немедленно вызываем с новыми значениями
+      try {
+        const archivedOrdersData = await invoke<Order[]>('get_archived_orders', {
+          statusFilter: newArchiveFilter.status,
+          periodStart: newArchiveFilter.periodStart,
+          periodEnd: newArchiveFilter.periodEnd,
+          searchQuery: newArchiveFilter.search
+        });
+        setArchivedOrders(archivedOrdersData);
+      } catch (error) {
+        console.error('Error loading archived orders:', error);
+      }
     }
   };
 
@@ -488,20 +514,9 @@ const MasterDashboard: React.FC = () => {
     }
   };
 
-  // Фильтрация архивных заказов (в реальном приложении это было бы на бэкенде)
+  // Фильтрация архивных заказов (только поисковый запрос, остальные фильтры уже применены на бэкенде)
   const getFilteredArchiveOrders = () => {
     return archivedOrders.filter(order => {
-      if (archiveFilter.status !== 'All' && order.status !== archiveFilter.status) {
-        return false;
-      }
-
-      const orderDate = new Date(order.created_at);
-      const start = new Date(archiveFilter.periodStart);
-      const end = new Date(archiveFilter.periodEnd);
-      if (orderDate < start || orderDate > end) {
-        return false;
-      }
-
       if (archiveFilter.search &&
           !clients[order.client_id]?.full_name.toLowerCase().includes(archiveFilter.search.toLowerCase()) &&
           !cars[order.car_id]?.make.toLowerCase().includes(archiveFilter.search.toLowerCase()) &&

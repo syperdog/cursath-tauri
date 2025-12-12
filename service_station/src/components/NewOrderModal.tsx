@@ -50,6 +50,19 @@ const NewOrderModal: React.FC<NewOrderModalProps> = ({
     e.preventDefault();
     setLoading(true);
 
+    // Проверяем, что клиент и автомобиль выбраны
+    if (!client) {
+      setDateError('Не выбран клиент');
+      setLoading(false);
+      return;
+    }
+
+    if (!car) {
+      setDateError('Не выбран автомобиль');
+      setLoading(false);
+      return;
+    }
+
     const newMileage = parseInt(mileage);
     if (isNaN(newMileage) || newMileage < previousMileage) {
       setDateError(`Пробег не может быть меньше предыдущего (${previousMileage} км)`);
@@ -68,8 +81,8 @@ const NewOrderModal: React.FC<NewOrderModalProps> = ({
       // Send the data to the backend to create the order
       const result = await invoke<string>('create_order', {
         sessionToken,
-        clientId: client?.id,
-        carId: car?.id,
+        clientId: client.id,
+        carId: car.id,
         complaint,
         currentMileage: newMileage
       });
@@ -153,7 +166,7 @@ const NewOrderModal: React.FC<NewOrderModalProps> = ({
           </div>
 
           <div className="modal-actions">
-            <button type="submit" className="create-btn" disabled={loading}>
+            <button type="submit" className="create-btn" disabled={loading || !client || !car}>
               {loading ? 'СОЗДАНИЕ...' : '🚀 СОЗДАТЬ ЗАКАЗ'}
             </button>
             <button type="button" onClick={() => onClose()} className="cancel-btn" disabled={loading}>

@@ -690,17 +690,23 @@ async fn get_archived_orders(
     state: tauri::State<'_, Database>
 ) -> Result<Vec<Order>, String> {
     // Query archived orders based on filters
-    let query = "SELECT id, client_id, car_id, master_id, worker_id, status::text, complaint, current_mileage, prepayment::text, total_amount::text, created_at::text, completed_at::text FROM orders WHERE status IN ('Closed', 'Cancelled')";
-    let mut query_builder = sqlx::QueryBuilder::new(query);
+    let mut query_builder = sqlx::QueryBuilder::new("SELECT id, client_id, car_id, master_id, worker_id, status::text, complaint, current_mileage, prepayment::text, total_amount::text, created_at::text, completed_at::text FROM orders");
 
-    // Add status filter if not 'All'
+    // Add initial WHERE clause based on status filter
     if status_filter != "All" {
-        query_builder.push(" AND status = ");
-        query_builder.push_bind(&status_filter);
+        if status_filter == "Archived" {
+            // Show only archived statuses ('Closed', 'Cancelled')
+            query_builder.push(" WHERE status IN ('Closed', 'Cancelled') AND created_at BETWEEN ");
+        } else {
+            // Show only the selected status
+            query_builder.push(" WHERE status = ");
+            query_builder.push_bind(&status_filter);
+            query_builder.push(" AND created_at BETWEEN ");
+        }
+    } else {
+        // If showing all statuses, only use date filter
+        query_builder.push(" WHERE created_at BETWEEN ");
     }
-
-    // Add date range filter
-    query_builder.push(" AND created_at BETWEEN ");
     query_builder.push_bind(&period_start);
     query_builder.push(" AND ");
     query_builder.push_bind(&period_end);
