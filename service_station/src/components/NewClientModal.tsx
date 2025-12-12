@@ -37,11 +37,13 @@ const NewClientModal: React.FC<NewClientModalProps> = ({ isOpen, onClose, onClie
       }
 
       // Вызываем Tauri команду для создания клиента
-      const result = await invoke<string>('create_client', {
-        session_token: sessionToken,
-        full_name: newClient.full_name,
-        phone: newClient.phone,
-        address: newClient.address
+      const result = await invoke<string>('create_client_with_json', {
+        request: {
+          sessionToken,
+          fullName: newClient.full_name,
+          phone: newClient.phone,
+          address: newClient.address
+        }
       });
 
       console.log(result); // Логируем результат

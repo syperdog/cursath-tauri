@@ -34,6 +34,7 @@ const NewCarModal: React.FC<NewCarModalProps> = ({ isOpen, onClose, onCarCreated
     production_year: null,
     mileage: 0
   });
+  const [mileageInput, setMileageInput] = useState<string>('0');
   const [clients, setClients] = useState<Client[]>([]);
   const [selectedClient, setSelectedClient] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
@@ -78,15 +79,17 @@ const NewCarModal: React.FC<NewCarModalProps> = ({ isOpen, onClose, onCarCreated
       }
 
       // Вызываем Tauri команду для создания автомобиля
-      const result = await invoke<string>('create_car', {
-        session_token: sessionToken,
-        client_id: selectedClient, // Используем выбранного клиента
-        vin: newCar.vin,
-        license_plate: newCar.license_plate,
-        make: newCar.make,
-        model: newCar.model,
-        production_year: newCar.production_year,
-        mileage: newCar.mileage
+      const result = await invoke<string>('create_car_with_json', {
+        request: {
+          sessionToken,
+          clientId: selectedClient, // Используем выбранного клиента
+          vin: newCar.vin,
+          licensePlate: newCar.license_plate,
+          make: newCar.make,
+          model: newCar.model,
+          productionYear: newCar.production_year,
+          mileage: newCar.mileage
+        }
       });
 
       console.log(result); // Логируем результат
@@ -101,6 +104,7 @@ const NewCarModal: React.FC<NewCarModalProps> = ({ isOpen, onClose, onCarCreated
         production_year: null,
         mileage: 0
       });
+      setMileageInput('0'); // Сбрасываем значение пробега в input
       setSelectedClient(null); // Сбрасываем выбор клиента
       onClose();
 
@@ -250,10 +254,29 @@ const NewCarModal: React.FC<NewCarModalProps> = ({ isOpen, onClose, onCarCreated
             <input
               id="mileage"
               type="number"
-              value={newCar.mileage}
-              onChange={(e) => setNewCar({...newCar, mileage: e.target.value ? parseInt(e.target.value) : 0})}
+              value={mileageInput}
+              onChange={(e) => {
+                const value = e.target.value;
+
+                // Разрешаем пустое значение для возможности удаления
+                setMileageInput(value);
+
+                // Проверяем, что значение - число и не меньше 0
+                const numValue = parseInt(value);
+                if (!isNaN(numValue) && numValue >= 0) {
+                  setNewCar({...newCar, mileage: numValue});
+                } else if (value === '') {
+                  // Если значение пустое, сохраняем 0
+                  setNewCar({...newCar, mileage: 0});
+                } else if (!isNaN(numValue) && numValue < 0) {
+                  // Если введено отрицательное число, устанавливаем 0
+                  setNewCar({...newCar, mileage: 0});
+                }
+                // Если введено не число (кроме пустой строки), ничего не меняем
+              }}
               placeholder="Например: 50000"
               min="0"
+              step="1"
             />
           </div>
 

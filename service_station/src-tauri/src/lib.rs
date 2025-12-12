@@ -1459,6 +1459,70 @@ async fn create_client(
     Ok(format!("Клиент успешно создан с ID: {}", client_id))
 }
 
+#[derive(serde::Deserialize)]
+struct CreateCarRequest {
+    #[serde(rename = "sessionToken")]
+    session_token: String,
+    #[serde(rename = "clientId")]
+    client_id: Option<i32>,
+    #[serde(rename = "vin")]
+    vin: Option<String>,
+    #[serde(rename = "licensePlate")]
+    license_plate: Option<String>,
+    #[serde(rename = "make")]
+    make: String,
+    #[serde(rename = "model")]
+    model: String,
+    #[serde(rename = "productionYear")]
+    production_year: Option<i32>,
+    #[serde(rename = "mileage")]
+    mileage: i32,
+}
+
+#[tauri::command]
+async fn create_car_with_json(
+    request: CreateCarRequest,
+    state: tauri::State<'_, Database>
+) -> Result<String, String> {
+    create_car(
+        request.session_token,
+        request.client_id,
+        request.vin,
+        request.license_plate,
+        request.make,
+        request.model,
+        request.production_year,
+        request.mileage,
+        state
+    ).await
+}
+
+#[derive(serde::Deserialize)]
+struct CreateClientRequest {
+    #[serde(rename = "sessionToken")]
+    session_token: String,
+    #[serde(rename = "fullName")]
+    full_name: String,
+    #[serde(rename = "phone")]
+    phone: String,
+    #[serde(rename = "address")]
+    address: Option<String>,
+}
+
+#[tauri::command]
+async fn create_client_with_json(
+    request: CreateClientRequest,
+    state: tauri::State<'_, Database>
+) -> Result<String, String> {
+    create_client(
+        request.session_token,
+        request.full_name,
+        request.phone,
+        request.address,
+        state
+    ).await
+}
+
 #[tauri::command]
 async fn get_all_clients(state: tauri::State<'_, Database>) -> Result<Vec<Client>, String> {
     let query = "SELECT id, full_name, phone, address, created_at::text FROM clients ORDER BY full_name";
@@ -1513,51 +1577,38 @@ async fn create_car(
     }
 
     // Проверяем, существует ли уже автомобиль с таким VIN или госномером
-    let mut conditions = Vec::new();
-    let mut params = Vec::new();
-    let mut param_count = 1;
-
-    if let Some(vin_value) = &vin {
+    if let Some(ref vin_value) = vin {
         if !vin_value.is_empty() {
-            conditions.push(format!("vin = ${}", param_count));
-            params.push(vin_value);
-            param_count += 1;
+            let existing_car_query = "SELECT id FROM cars WHERE vin = $1";
+            let existing_car = sqlx::query(existing_car_query)
+                .bind(vin_value)
+                .fetch_optional(&state.pool)
+                .await
+                .map_err(|e| format!("Database error checking existing car by VIN: {}", e))?;
+
+            if existing_car.is_some() {
+                return Err("Автомобиль с таким VIN или госномером уже существует".to_string());
+            }
         }
     }
 
-    if let Some(plate_value) = &license_plate {
-        let plate_condition = format!("license_plate = ${}", param_count);
-        params.push(plate_value);
-        conditions.push(plate_condition);
-    }
+    if let Some(ref plate_value) = license_plate {
+        if !plate_value.is_empty() {
+            let existing_car_query = "SELECT id FROM cars WHERE license_plate = $1";
+            let existing_car = sqlx::query(existing_car_query)
+                .bind(plate_value)
+                .fetch_optional(&state.pool)
+                .await
+                .map_err(|e| format!("Database error checking existing car by license plate: {}", e))?;
 
-    if !conditions.is_empty() {
-        let check_query = format!(
-            "SELECT id FROM cars WHERE {}",
-            conditions.join(" OR ")
-        );
-
-        let mut query_builder = sqlx::QueryBuilder::new(&check_query);
-
-        // Привязываем параметры по одному
-        for param in &params {
-            query_builder.push_bind(param);
-        }
-
-        let query = query_builder.build();
-
-        let existing_car = query
-            .fetch_optional(&state.pool)
-            .await
-            .map_err(|e| format!("Database error checking existing car: {}", e))?;
-
-        if existing_car.is_some() {
-            return Err("Автомобиль с таким VIN или госномером уже существует".to_string());
+            if existing_car.is_some() {
+                return Err("Автомобиль с таким VIN или госномером уже существует".to_string());
+            }
         }
     }
 
     // Если указан ID клиента, проверим его существование
-    let actual_client_id = if let Some(cid) = client_id {
+    if let Some(cid) = client_id {
         let client_check_query = "SELECT id FROM clients WHERE id = $1";
         let existing_client = sqlx::query(client_check_query)
             .bind(cid)
@@ -1568,48 +1619,18 @@ async fn create_car(
         if existing_client.is_none() {
             return Err("Указанный клиент не существует".to_string());
         }
-        Some(cid)
-    } else {
-        // Если клиент не указан, создаем автомобиль без привязки к клиенту
-        None
     };
 
     // Вставляем новый автомобиль в базу данных
-    let mut insert_query = sqlx::QueryBuilder::new("INSERT INTO cars (client_id, vin, license_plate, make, model, production_year, mileage) VALUES ");
-    insert_query.push("(");
-    if let Some(client_id_val) = actual_client_id {
-        insert_query.push_bind(client_id_val);
-    } else {
-        insert_query.push("NULL");
-    }
-    insert_query.push(", ");
-    if let Some(vin_val) = &vin {
-        insert_query.push_bind(vin_val);
-    } else {
-        insert_query.push("NULL");
-    }
-    insert_query.push(", ");
-    if let Some(plate_val) = &license_plate {
-        insert_query.push_bind(plate_val);
-    } else {
-        insert_query.push("NULL");
-    }
-    insert_query.push(", ");
-    insert_query.push_bind(&make);
-    insert_query.push(", ");
-    insert_query.push_bind(&model);
-    insert_query.push(", ");
-    if let Some(year_val) = &production_year {
-        insert_query.push_bind(year_val);
-    } else {
-        insert_query.push("NULL");
-    }
-    insert_query.push(", ");
-    insert_query.push_bind(&mileage);
-    insert_query.push(") RETURNING id");
-
-    let query = insert_query.build();
-    let row = query
+    let insert_query = "INSERT INTO cars (client_id, vin, license_plate, make, model, production_year, mileage) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id";
+    let row = sqlx::query(insert_query)
+        .bind(client_id)
+        .bind(&vin)
+        .bind(&license_plate)
+        .bind(&make)
+        .bind(&model)
+        .bind(&production_year)
+        .bind(&mileage)
         .fetch_one(&state.pool)
         .await
         .map_err(|e| format!("Database error: {}", e))?;
@@ -2325,6 +2346,8 @@ pub fn run() {
             create_order,
             create_client,
             create_car,
+            create_client_with_json,
+            create_car_with_json,
             get_all_clients,
             get_all_users,
             create_user,
