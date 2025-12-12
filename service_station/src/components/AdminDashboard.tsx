@@ -4,6 +4,7 @@ import { User } from '../types/user';
 
 import './AdminDashboard.css';
 import ServicesReferenceModal from './ServicesReferenceModal';
+import ReportGenerator from './ReportGenerator';
 
 interface AdminDashboardProps {
   user: User;
@@ -11,7 +12,7 @@ interface AdminDashboardProps {
 }
 
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
-  const [activeTab, setActiveTab] = useState<'users' | 'settings' | 'logs' | 'services'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'settings' | 'logs' | 'reports' | 'services'>('users');
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -192,6 +193,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
               onClick={() => setActiveTab('logs')}
             >
               Журнал событий
+            </button>
+            <button
+              className={activeTab === 'reports' ? 'active' : ''}
+              onClick={() => setActiveTab('reports')}
+            >
+              Генерация отчетов
             </button>
             <button
               className={activeTab === 'services' ? 'active' : ''}
@@ -471,6 +478,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
                 </table>
               )}
 
+            </div>
+          )}
+
+          {activeTab === 'reports' && (
+            <div className="reports-section">
+              <h2>Генерация отчетов</h2>
+              <ReportGenerator />
             </div>
           )}
 
