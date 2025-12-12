@@ -5,6 +5,7 @@ import './StorekeeperDashboard.css';
 import PartsSelectionModal from './PartsSelectionModal';
 import IssuePartsModal from './IssuePartsModal';
 import WarehouseStockModal from './WarehouseStockModal';
+import AddPartToWarehouseModal from './AddPartToWarehouseModal';
 
 interface Order {
   id: number;
@@ -74,6 +75,7 @@ const StorekeeperDashboard: React.FC = () => {
   const [showPartsSelectionModal, setShowPartsSelectionModal] = useState(false);
   const [showIssuePartsModal, setShowIssuePartsModal] = useState(false);
   const [showWarehouseStockModal, setShowWarehouseStockModal] = useState(false);
+  const [showAddPartModal, setShowAddPartModal] = useState(false);
   const [selectedOrderForParts, setSelectedOrderForParts] = useState<Order | null>(null);
   const [selectedOrderForIssuance, setSelectedOrderForIssuance] = useState<Order | null>(null);
 
@@ -322,6 +324,12 @@ const StorekeeperDashboard: React.FC = () => {
           >
             🔍 СКЛАД (Остатки)
           </button>
+          <button
+            className="primary-btn"
+            onClick={() => setShowAddPartModal(true)}
+          >
+            ➕ ДОБАВИТЬ ЗАПЧАСТЬ НА СКЛАД
+          </button>
         </div>
 
         {activeTab === 'selection' && (
@@ -476,6 +484,14 @@ const StorekeeperDashboard: React.FC = () => {
         <WarehouseStockModal
           isOpen={showWarehouseStockModal}
           onClose={() => setShowWarehouseStockModal(false)}
+        />
+      )}
+
+      {showAddPartModal && (
+        <AddPartToWarehouseModal
+          isOpen={showAddPartModal}
+          onClose={() => setShowAddPartModal(false)}
+          onPartAdded={loadOrders} // Обновляем данные после добавления
         />
       )}
     </div>

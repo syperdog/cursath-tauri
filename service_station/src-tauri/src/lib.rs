@@ -1070,6 +1070,47 @@ async fn add_part_to_order(session_token: String, order_id: i32, part_name: Stri
     Ok(format!("Part '{}' added to order {}", part_name, order_id))
 }
 
+#[derive(serde::Deserialize)]
+struct AddWarehouseItemRequest {
+    #[serde(rename = "sessionToken")]
+    session_token: String,
+    #[serde(rename = "name")]
+    name: String,
+    #[serde(rename = "brand")]
+    brand: String,
+    #[serde(rename = "article")]
+    article: String,
+    #[serde(rename = "locationCell")]
+    location_cell: String,
+    #[serde(rename = "quantity")]
+    quantity: i32,
+    #[serde(rename = "minQuantity")]
+    min_quantity: i32,
+    #[serde(rename = "purchasePrice")]
+    purchase_price: f64,
+    #[serde(rename = "sellingPrice")]
+    selling_price: f64,
+}
+
+#[tauri::command]
+async fn add_warehouse_item_with_json(
+    request: AddWarehouseItemRequest,
+    state: tauri::State<'_, Database>
+) -> Result<String, String> {
+    add_warehouse_item(
+        request.session_token,
+        request.name,
+        request.brand,
+        request.article,
+        request.location_cell,
+        request.quantity,
+        request.min_quantity,
+        request.purchase_price,
+        request.selling_price,
+        state
+    ).await
+}
+
 #[tauri::command]
 async fn add_warehouse_item(
     session_token: String,
@@ -2359,6 +2400,7 @@ pub fn run() {
             search_parts_by_vin,
             add_part_to_order,
             add_warehouse_item,
+            add_warehouse_item_with_json,
             confirm_order_parts_and_works,
             get_available_workers,
             assign_workers_to_order,
