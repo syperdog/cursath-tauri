@@ -2059,6 +2059,123 @@ async fn get_all_defect_types(state: tauri::State<'_, Database>) -> Result<Vec<D
 }
 
 #[tauri::command]
+async fn create_defect_node(
+    session_token: String,
+    name: String,
+    description: Option<String>,
+    state: tauri::State<'_, Database>
+) -> Result<DefectNode, String> {
+    // Validate inputs
+    if name.trim().is_empty() {
+        return Err("Название узла не может быть пустым".to_string());
+    }
+
+    // Получаем информацию о пользователе из сессии
+    let user = {
+        let sessions = SESSIONS.lock().map_err(|_| "Session lock error")?;
+        sessions.get(&session_token).cloned().ok_or("Invalid session token")?
+    };
+
+    // Insert a new defect node into the database
+    let query = "INSERT INTO defect_nodes (name, description) VALUES ($1, $2) RETURNING id";
+    let row = sqlx::query(query)
+        .bind(&name)
+        .bind(&description)
+        .fetch_one(&state.pool)
+        .await
+        .map_err(|e| format!("Database error: {}", e))?;
+
+    let new_id: i32 = row.get("id");
+
+    // Логируем создание узла неисправности
+    let log_result = log_event(
+        Some(user.id),
+        "Create_Defect_Node".to_string(),
+        format!("Создан новый узел неисправности '{}' с ID {}", name, new_id),
+        None, // IP-адрес пока не реализован
+        state.clone()
+    ).await;
+
+    if let Err(e) = log_result {
+        eprintln!("Error logging defect node creation: {}", e);
+    }
+
+    Ok(DefectNode {
+        id: new_id,
+        name,
+        description,
+    })
+}
+
+#[tauri::command]
+async fn create_defect_type(
+    session_token: String,
+    node_id: i32,
+    name: String,
+    description: Option<String>,
+    state: tauri::State<'_, Database>
+) -> Result<DefectType, String> {
+    // Validate inputs
+    if name.trim().is_empty() {
+        return Err("Название типа неисправности не может быть пустым".to_string());
+    }
+
+    // Check if the node exists
+    let node_check_query = "SELECT name FROM defect_nodes WHERE id = $1";
+    let node_row = sqlx::query(node_check_query)
+        .bind(node_id)
+        .fetch_optional(&state.pool)
+        .await
+        .map_err(|e| format!("Database error: {}", e))?;
+
+    if node_row.is_none() {
+        return Err(format!("Узел неисправности с ID {} не найден", node_id));
+    }
+
+    // Получаем информацию о пользователе из сессии
+    let user = {
+        let sessions = SESSIONS.lock().map_err(|_| "Session lock error")?;
+        sessions.get(&session_token).cloned().ok_or("Invalid session token")?
+    };
+
+    // Insert a new defect type into the database
+    let query = "INSERT INTO defect_types (node_id, name, description) VALUES ($1, $2, $3) RETURNING id";
+    let row = sqlx::query(query)
+        .bind(node_id)
+        .bind(&name)
+        .bind(&description)
+        .fetch_one(&state.pool)
+        .await
+        .map_err(|e| format!("Database error: {}", e))?;
+
+    let new_id: i32 = row.get("id");
+
+    // Get the node name for logging purposes
+    let node_name: String = node_row.unwrap().get("name");
+
+    // Логируем создание типа неисправности
+    let log_result = log_event(
+        Some(user.id),
+        "Create_Defect_Type".to_string(),
+        format!("Создан новый тип неисправности '{}' в узле '{}' с ID {}", name, node_name, new_id),
+        None, // IP-адрес пока не реализован
+        state.clone()
+    ).await;
+
+    if let Err(e) = log_result {
+        eprintln!("Error logging defect type creation: {}", e);
+    }
+
+    Ok(DefectType {
+        id: new_id,
+        node_id,
+        node_name,
+        name,
+        description,
+    })
+}
+
+#[tauri::command]
 async fn save_diagnostic_results(order_id: i32, diagnostician_id: i32, defect_type_ids: Vec<i32>, state: tauri::State<'_, Database>) -> Result<String, String> {
     let defects_count = defect_type_ids.len();
     for defect_type_id in &defect_type_ids {
@@ -2419,6 +2536,8 @@ pub fn run() {
             get_service_defect_types,
             link_service_to_defect_type,
             get_all_defect_types_grouped,
+            create_defect_node,
+            create_defect_type,
             create_user,
             update_user,
             delete_user,

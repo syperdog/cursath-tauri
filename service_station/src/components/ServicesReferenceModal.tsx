@@ -12,7 +12,7 @@ interface Service {
 interface DefectNode {
   id: number;
   name: string;
-  description: string;
+  description: string | null;
 }
 
 interface DefectType {
@@ -20,14 +20,17 @@ interface DefectType {
   node_id: number;
   node_name: string;
   name: string;
-  description: string;
+  description: string | null;
 }
 
-interface DefectNodeWithTypes {
-  node_id: number;
-  node_name: string;
-  node_description: string;
-  defect_types: DefectType[];
+interface Defect {
+  id: number;
+  order_id: number;
+  diagnostician_id: number;
+  defect_description: string; // узел/неисправность
+  diagnostician_comment: string | null; // детальное описание
+  is_confirmed: boolean;
+  defect_type_id: number | null;
 }
 
 interface ServicesReferenceModalProps {
@@ -36,32 +39,44 @@ interface ServicesReferenceModalProps {
 }
 
 const ServicesReferenceModal: React.FC<ServicesReferenceModalProps> = ({ isOpen, onClose }) => {
+  // Состояния для услуг
   const [services, setServices] = useState<Service[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [editingService, setEditingService] = useState<Service | null>(null);
+  const [selectedServiceId, setSelectedServiceId] = useState<number | null>(null);
+  const [showNewServiceForm, setShowNewServiceForm] = useState(false);
   const [newService, setNewService] = useState({
     name: '',
     base_price: '',
     norm_hours: ''
   });
-  const [defectTypesGrouped, setDefectTypesGrouped] = useState<DefectNodeWithTypes[]>([]);
-  const [selectedDefectTypes, setSelectedDefectTypes] = useState<number[]>([]);
-  const [editingServiceDefectTypes, setEditingServiceDefectTypes] = useState<DefectType[]>([]);
-  const [showDefectTypesModal, setShowDefectTypesModal] = useState(false);
+
+  // Состояния для узлов
+  const [defectNodes, setDefectNodes] = useState<DefectNode[]>([]);
+  const [selectedNodeId, setSelectedNodeId] = useState<number | null>(null);
+  const [showNewNodeForm, setShowNewNodeForm] = useState(false);
+  const [newNodeName, setNewNodeName] = useState('');
+  const [newNodeDescription, setNewNodeDescription] = useState('');
+
+  // Состояния для неисправностей
+  const [newDefect, setNewDefect] = useState({
+    description: '',
+    comment: ''
+  });
+
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (isOpen) {
       loadServices();
-      loadDefectTypes();
+      loadDefectNodes();
     }
   }, [isOpen]);
 
-  const loadDefectTypes = async () => {
+  const loadDefectNodes = async () => {
     try {
-      const defectTypesData = await invoke<DefectNodeWithTypes[]>('get_all_defect_types_grouped');
-      setDefectTypesGrouped(defectTypesData);
+      const nodes = await invoke<DefectNode[]>('get_defect_nodes');
+      setDefectNodes(nodes);
     } catch (error) {
-      console.error('Error loading defect types:', error);
+      console.error('Error loading defect nodes:', error);
     }
   };
 
@@ -78,8 +93,11 @@ const ServicesReferenceModal: React.FC<ServicesReferenceModalProps> = ({ isOpen,
     }
   };
 
-  const handleCreateService = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleCreateService = async () => {
+    if (!newService.name.trim()) {
+      alert('Название услуги не может быть пустым');
+      return;
+    }
 
     try {
       // Получаем токен сессии из localStorage
@@ -98,6 +116,7 @@ const ServicesReferenceModal: React.FC<ServicesReferenceModalProps> = ({ isOpen,
 
       // Reset form
       setNewService({ name: '', base_price: '', norm_hours: '' });
+      setShowNewServiceForm(false);
 
       // Reload services
       await loadServices();
@@ -107,40 +126,9 @@ const ServicesReferenceModal: React.FC<ServicesReferenceModalProps> = ({ isOpen,
     }
   };
 
-  const handleUpdateService = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!editingService) return;
-
-    try {
-      // Получаем токен сессии из localStorage
-      const sessionToken = localStorage.getItem('sessionToken');
-      if (!sessionToken) {
-        alert('Сессия не найдена. Пожалуйста, войдите в систему.');
-        return;
-      }
-
-      await invoke('update_service', {
-        sessionToken,
-        serviceId: editingService.id,
-        name: editingService.name,
-        basePrice: parseFloat(editingService.base_price) || 0,
-        normHours: parseFloat(editingService.norm_hours) || 0
-      });
-
-      // Close edit mode
-      setEditingService(null);
-
-      // Reload services
-      await loadServices();
-    } catch (error) {
-      console.error('Error updating service:', error);
-      alert('Ошибка при обновлении услуги: ' + error);
-    }
-  };
-
-  const handleDeleteService = async (id: number) => {
-    if (!window.confirm('Вы уверены, что хотите удалить эту услугу?')) {
+  const handleCreateDefectNode = async () => {
+    if (!newNodeName.trim()) {
+      alert('Название узла не может быть пустым');
       return;
     }
 
@@ -152,71 +140,68 @@ const ServicesReferenceModal: React.FC<ServicesReferenceModalProps> = ({ isOpen,
         return;
       }
 
-      await invoke('delete_service', {
+      const newNode: DefectNode = await invoke('create_defect_node', {
         sessionToken,
-        serviceId: id
+        name: newNodeName,
+        description: newNodeDescription || null
       });
 
-      // Reload services
-      await loadServices();
+      // Обновляем список узлов
+      setDefectNodes([...defectNodes, newNode]);
+      setSelectedNodeId(newNode.id);
+      setNewNodeName('');
+      setNewNodeDescription('');
+      setShowNewNodeForm(false);
+
+      alert('Новый узел успешно создан!');
     } catch (error) {
-      console.error('Error deleting service:', error);
-      alert('Ошибка при удалении услуги: ' + error);
+      console.error('Error creating defect node:', error);
+      alert('Ошибка при создании узла: ' + error);
     }
   };
 
-  const handleEditClick = (service: Service) => {
-    setEditingService(service);
-  };
-
-  const handleCancelEdit = () => {
-    setEditingService(null);
-    setShowDefectTypesModal(false); // Закрываем модальное окно связей
-  };
-
-  const handleEditDefectTypes = async (serviceId: number) => {
-    try {
-      const serviceDefectTypes = await invoke<DefectType[]>('get_service_defect_types', { serviceId });
-      setEditingServiceDefectTypes(serviceDefectTypes);
-
-      // Устанавливаем выбранные типы неисправностей для модального окна
-      setSelectedDefectTypes(serviceDefectTypes.map(dt => dt.id));
-      setShowDefectTypesModal(true);
-    } catch (error) {
-      console.error('Error loading service defect types:', error);
-      alert('Ошибка при загрузке связанных типов неисправностей: ' + error);
+  const handleCreateDefect = async () => {
+    if (!selectedServiceId) {
+      alert('Пожалуйста, выберите услугу');
+      return;
     }
-  };
 
-  const handleSaveDefectTypes = async () => {
-    if (!editingService) return;
+    if (!selectedNodeId) {
+      alert('Пожалуйста, выберите узел');
+      return;
+    }
+
+    if (!newDefect.description.trim()) {
+      alert('Описание неисправности не может быть пустым');
+      return;
+    }
 
     try {
-      await invoke('link_service_to_defect_type', {
-        serviceId: editingService.id,
-        defectTypeIds: selectedDefectTypes
+      // Получаем токен сессии из localStorage
+      const sessionToken = localStorage.getItem('sessionToken');
+      if (!sessionToken) {
+        alert('Сессия не найдена. Пожалуйста, войдите в систему.');
+        return;
+      }
+
+      // Создаем новый тип неисправности
+      // Примечание: в текущей реализации мы создаем новый тип неисправности, привязанный к узлу
+      // В справочнике услуг не предполагается создание записей о неисправностях в контексте заказа
+      await invoke('create_defect_type', {
+        sessionToken,
+        nodeId: selectedNodeId,
+        name: newDefect.description,
+        description: newDefect.comment || null
       });
 
-      // Обновляем отображение типов неисправностей для редактируемой услуги
-      const updatedServiceDefectTypes = defectTypesGrouped.flatMap(node =>
-        node.defect_types.filter(dt => selectedDefectTypes.includes(dt.id))
-      );
+      // Сбросить форму создания неисправности
+      setNewDefect({ description: '', comment: '' });
 
-      setEditingServiceDefectTypes(updatedServiceDefectTypes);
-      setShowDefectTypesModal(false);
-      alert('Связи с типами неисправностей успешно сохранены!');
+      alert('Неисправность успешно создана и привязана к узлу!');
     } catch (error) {
-      console.error('Error saving defect types:', error);
-      alert('Ошибка при сохранении связей с типами неисправностей: ' + error);
+      console.error('Error creating defect:', error);
+      alert('Ошибка при создании неисправности: ' + error);
     }
-  };
-
-  const toggleDefectType = (defectTypeId: number) => {
-    setSelectedDefectTypes(prev =>
-      prev.includes(defectTypeId)
-        ? prev.filter(id => id !== defectTypeId)
-        : [...prev, defectTypeId]
-    );
   };
 
   if (!isOpen) return null;
@@ -230,208 +215,196 @@ const ServicesReferenceModal: React.FC<ServicesReferenceModalProps> = ({ isOpen,
         </div>
 
         <div className="modal-body">
-          <div className="add-service-form">
-            <h3>➕ ДОБАВИТЬ НОВУЮ УСЛУГУ</h3>
-            <form onSubmit={handleCreateService}>
-              <div className="input-group">
-                <label htmlFor="serviceName">Название услуги:</label>
-                <input
-                  id="serviceName"
-                  type="text"
-                  value={newService.name}
-                  onChange={(e) => setNewService({...newService, name: e.target.value})}
-                  placeholder="Например: Диагностика двигателя"
-                  required
-                />
-              </div>
+          {/* Выбор/создание услуги */}
+          <div className="service-selection-section">
+            <h3>🔧 ВЫБОР УСЛУГИ</h3>
+            <div className="select-with-create">
+              <select
+                value={selectedServiceId || ''}
+                onChange={(e) => setSelectedServiceId(e.target.value ? parseInt(e.target.value) : null)}
+              >
+                <option value="">Выберите услугу</option>
+                {services.map(service => (
+                  <option key={service.id} value={service.id}>
+                    {service.name}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                className="create-btn"
+                onClick={() => {
+                  setShowNewServiceForm(true);
+                }}
+              >
+                ➕ НОВАЯ УСЛУГА
+              </button>
+            </div>
 
-              <div className="input-group">
-                <label htmlFor="serviceBasePrice">Базовая цена:</label>
-                <input
-                  id="serviceBasePrice"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={newService.base_price}
-                  onChange={(e) => setNewService({...newService, base_price: e.target.value})}
-                  placeholder="0.00"
-                  required
-                />
+            {showNewServiceForm && (
+              <div className="create-form">
+                <h4>СОЗДАТЬ НОВУЮ УСЛУГУ</h4>
+                <div className="input-group">
+                  <label htmlFor="newServiceName">Название услуги:</label>
+                  <input
+                    id="newServiceName"
+                    type="text"
+                    value={newService.name}
+                    onChange={(e) => setNewService({...newService, name: e.target.value})}
+                    placeholder="Например: Диагностика двигателя"
+                  />
+                </div>
+                <div className="input-grid">
+                  <div className="input-group">
+                    <label htmlFor="newServiceBasePrice">Базовая цена:</label>
+                    <input
+                      id="newServiceBasePrice"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={newService.base_price}
+                      onChange={(e) => setNewService({...newService, base_price: e.target.value})}
+                      placeholder="0.00"
+                    />
+                  </div>
+                  <div className="input-group">
+                    <label htmlFor="newServiceNormHours">Нормо-часы:</label>
+                    <input
+                      id="newServiceNormHours"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={newService.norm_hours}
+                      onChange={(e) => setNewService({...newService, norm_hours: e.target.value})}
+                      placeholder="0.00"
+                    />
+                  </div>
+                </div>
+                <div className="form-actions">
+                  <button className="secondary-btn" onClick={handleCreateService}>
+                    🛠️ СОЗДАТЬ УСЛУГУ
+                  </button>
+                  <button
+                    type="button"
+                    className="cancel-btn"
+                    onClick={() => {
+                      setShowNewServiceForm(false);
+                      setNewService({ name: '', base_price: '', norm_hours: '' });
+                    }}
+                  >
+                    ❌ ОТМЕНА
+                  </button>
+                </div>
               </div>
-
-              <div className="input-group">
-                <label htmlFor="serviceNormHours">Нормо-часы:</label>
-                <input
-                  id="serviceNormHours"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={newService.norm_hours}
-                  onChange={(e) => setNewService({...newService, norm_hours: e.target.value})}
-                  placeholder="0.00"
-                  required
-                />
-              </div>
-
-              <button type="submit" className="add-service-btn">➕ ДОБАВИТЬ УСЛУГУ</button>
-            </form>
+            )}
           </div>
 
-          <div className="services-list">
-            <h3>📋 СПИСОК УСЛУГ:</h3>
+          {/* Выбор/создание узла */}
+          <div className="node-selection-section">
+            <h3>🔧 ВЫБОР УЗЛА</h3>
+            <div className="select-with-create">
+              <select
+                value={selectedNodeId || ''}
+                onChange={(e) => setSelectedNodeId(e.target.value ? parseInt(e.target.value) : null)}
+                disabled={!selectedServiceId}
+              >
+                <option value="">Выберите узел</option>
+                {defectNodes.map(node => (
+                  <option key={node.id} value={node.id}>
+                    {node.name}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                className="create-btn"
+                disabled={!selectedServiceId}
+                onClick={() => {
+                  setShowNewNodeForm(true);
+                }}
+              >
+                ➕ НОВЫЙ УЗЕЛ
+              </button>
+            </div>
 
-            {loading ? (
-              <p>Загрузка услуг...</p>
-            ) : services.length === 0 ? (
-              <p>Нет сохраненных услуг</p>
-            ) : (
-              <table className="services-table">
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>Название</th>
-                    <th>Базовая цена</th>
-                    <th>Нормо-часы</th>
-                    <th>Действия</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {services.map(service => (
-                    <tr key={service.id}>
-                      {editingService && editingService.id === service.id ? (
-                        <>
-                          <td>{service.id}</td>
-                          <td>
-                            <input
-                              type="text"
-                              value={editingService.name}
-                              onChange={(e) => setEditingService({...editingService, name: e.target.value})}
-                              className="edit-input"
-                            />
-                          </td>
-                          <td>
-                            <input
-                              type="number"
-                              step="0.01"
-                              min="0"
-                              value={editingService.base_price}
-                              onChange={(e) => setEditingService({...editingService, base_price: e.target.value})}
-                              className="edit-input"
-                            />
-                          </td>
-                          <td>
-                            <input
-                              type="number"
-                              step="0.01"
-                              min="0"
-                              value={editingService.norm_hours}
-                              onChange={(e) => setEditingService({...editingService, norm_hours: e.target.value})}
-                              className="edit-input"
-                            />
-                          </td>
-                          <td>
-                            <button
-                              className="edit-defect-types-btn"
-                              onClick={() => handleEditDefectTypes(service.id)}
-                            >
-                              📋 Узлы/неиспр.
-                            </button>
-                            <button
-                              className="save-btn"
-                              onClick={handleUpdateService}
-                            >
-                              ✅ Сохранить
-                            </button>
-                            <button
-                              className="cancel-btn"
-                              onClick={handleCancelEdit}
-                            >
-                              ❌ Отмена
-                            </button>
-                          </td>
-                        </>
-                      ) : (
-                        <>
-                          <td>{service.id}</td>
-                          <td>{service.name}</td>
-                          <td>{parseFloat(service.base_price).toFixed(2)}</td>
-                          <td>{parseFloat(service.norm_hours).toFixed(2)}</td>
-                          <td>
-                            <div>
-                              <button
-                                className="edit-btn"
-                                onClick={() => handleEditClick(service)}
-                              >
-                                📝 Редакт.
-                              </button>
-                              <button
-                                className="delete-btn"
-                                onClick={() => handleDeleteService(service.id)}
-                              >
-                                🗑️ Удалить
-                              </button>
-                              <button
-                                className="view-defect-types-btn"
-                                onClick={() => handleEditDefectTypes(service.id)}
-                                title="Посмотреть связанные узлы/неисправности"
-                              >
-                                📋 Узлы/неиспр.
-                              </button>
-                            </div>
-                          </td>
-                        </>
-                      )}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            {showNewNodeForm && (
+              <div className="create-form">
+                <h4>СОЗДАТЬ НОВЫЙ УЗЕЛ</h4>
+                <div className="input-group">
+                  <label htmlFor="newNodeName">Название узла:</label>
+                  <input
+                    id="newNodeName"
+                    type="text"
+                    value={newNodeName}
+                    onChange={(e) => setNewNodeName(e.target.value)}
+                    placeholder="Например: Двигатель"
+                  />
+                </div>
+                <div className="input-group">
+                  <label htmlFor="newNodeDescription">Описание:</label>
+                  <textarea
+                    id="newNodeDescription"
+                    value={newNodeDescription}
+                    onChange={(e) => setNewNodeDescription(e.target.value)}
+                    placeholder="Описание узла"
+                    rows={2}
+                  />
+                </div>
+                <div className="form-actions">
+                  <button className="secondary-btn" onClick={handleCreateDefectNode}>
+                    🛠️ СОЗДАТЬ УЗЕЛ
+                  </button>
+                  <button
+                    type="button"
+                    className="cancel-btn"
+                    onClick={() => {
+                      setShowNewNodeForm(false);
+                      setNewNodeName('');
+                      setNewNodeDescription('');
+                    }}
+                  >
+                    ❌ ОТМЕНА
+                  </button>
+                </div>
+              </div>
             )}
+          </div>
+
+          {/* Создание неисправности */}
+          <div className="defect-creation-section">
+            <h3>🔧 СОЗДАНИЕ НЕИСПРАВНОСТИ</h3>
+            <div className="input-group">
+              <label htmlFor="defectDescription">Описание неисправности:</label>
+              <input
+                id="defectDescription"
+                type="text"
+                value={newDefect.description}
+                onChange={(e) => setNewDefect({...newDefect, description: e.target.value})}
+                placeholder="Например: Стук в двигателе"
+                disabled={!selectedServiceId || !selectedNodeId}
+              />
+            </div>
+            <div className="input-group">
+              <label htmlFor="defectComment">Комментарий:</label>
+              <textarea
+                id="defectComment"
+                value={newDefect.comment}
+                onChange={(e) => setNewDefect({...newDefect, comment: e.target.value})}
+                placeholder="Дополнительная информация"
+                rows={2}
+                disabled={!selectedServiceId || !selectedNodeId}
+              />
+            </div>
+            <button
+              className="primary-btn"
+              onClick={handleCreateDefect}
+              disabled={!selectedServiceId || !selectedNodeId || !newDefect.description.trim()}
+            >
+              🛠️ СОЗДАТЬ НЕИСПРАВНОСТЬ
+            </button>
           </div>
         </div>
       </div>
-
-      {/* Модальное окно для выбора типов неисправностей */}
-      {showDefectTypesModal && editingService && (
-        <div className="modal-overlay" onClick={() => setShowDefectTypesModal(false)}>
-          <div className="defect-types-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>📋 СВЯЗЬ УСЛУГИ С НЕИСПРАВНОСТЯМИ: {editingService.name}</h2>
-              <button className="close-btn" onClick={() => setShowDefectTypesModal(false)}>✖ ЗАКРЫТЬ</button>
-            </div>
-
-            <div className="defect-types-content">
-              <div className="defect-nodes-list">
-                {defectTypesGrouped.map(node => (
-                  <div key={node.node_id} className="defect-node-section">
-                    <h3>{node.node_name}</h3>
-                    <div className="defect-types-grid">
-                      {node.defect_types.map(defectType => (
-                        <label key={defectType.id} className="defect-type-checkbox">
-                          <input
-                            type="checkbox"
-                            checked={selectedDefectTypes.includes(defectType.id)}
-                            onChange={() => toggleDefectType(defectType.id)}
-                          />
-                          <span className="defect-type-name">{defectType.name}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="defect-types-actions">
-                <button
-                  className="save-defect-types-btn"
-                  onClick={handleSaveDefectTypes}
-                >
-                  ✅ СОХРАНИТЬ СВЯЗИ
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
