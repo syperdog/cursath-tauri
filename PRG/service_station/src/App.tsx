@@ -1,5 +1,4 @@
-import React, { useState, useEffect } from 'react';
-import { invoke } from '@tauri-apps/api/core';
+import { useState, useEffect } from 'react';
 import "./App.css";
 import LoginForm from "./components/LoginForm";
 import MasterDashboard from "./components/MasterDashboard";
@@ -11,7 +10,7 @@ import { User } from "./types/user";
 
 function App() {
   const [currentView, setCurrentView] = useState<'login' | 'master' | 'admin' | 'diagnostician' | 'storekeeper' | 'worker'>('login');
-  const [user, setUser] = useState<User | null>(null);
+  const [user, ] = useState<User | null>(null); // Используем деструктуризацию, чтобы показать, что setUser не используется
 
   // Handle routing based on hash
   useEffect(() => {

@@ -430,7 +430,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
                       const headers = Object.keys(logsJson[0] || {});
                       const csvContent = [
                         headers.join(','),
-                        ...logsJson.map(row => headers.map(header => `"${row[header] || ''}"`).join(','))
+                        ...logsJson.map((row: any) => headers.map(header => `"${row[header] || ''}"`).join(','))
                       ].join('\n');
 
                       // Create download link

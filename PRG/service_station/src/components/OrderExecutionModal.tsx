@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import './OrderExecutionModal.css';
+import { User } from '../types/user';
 
 // Define TypeScript interfaces
 interface WorkItem {
@@ -73,7 +74,7 @@ const OrderExecutionModal: React.FC<OrderExecutionModalProps> = ({ orderId, onCl
           throw new Error('Session token not found');
         }
 
-        const userData = await invoke('get_user_session', { sessionToken });
+        const userData = await invoke<User | null>('get_user_session', { sessionToken });
         if (!userData) {
           throw new Error('User data not found');
         }

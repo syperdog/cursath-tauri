@@ -39,6 +39,7 @@ interface ClientApprovalModalProps {
   isOpen: boolean;
   order: Order;
   clientName: string;
+  defects: Defect[]; // Added defects property
   works: Work[];
   parts: Part[];
   onClose: () => void;
