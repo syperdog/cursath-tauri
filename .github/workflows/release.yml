@@ -1,4 +1,3 @@
-name: Release
 on:
   push:
     tags:
@@ -16,25 +15,32 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
+      # Добавляем установку pnpm
+      - name: install pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9
+      
       - name: setup node
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: 'pnpm' # Включаем кеширование для pnpm
+          cache-dependency-path: './PRG/service_station/pnpm-lock.yaml'
           
       - name: install Rust stable
         uses: dtolnay/rust-toolchain@stable
           
       - name: install frontend dependencies
-        # 👇 ГЛАВНОЕ ИЗМЕНЕНИЕ 1: Говорим зайти в папку перед установкой
         working-directory: ./PRG/service_station
-        run: npm install
+        # Заменили npm install на pnpm install
+        run: pnpm install
         
       - name: Build the app
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          # 👇 ГЛАВНОЕ ИЗМЕНЕНИЕ 2: Говорим Tauri, где искать конфиги
           projectPath: ./PRG/service_station
           
           tagName: v__VERSION__ 
