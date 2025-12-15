@@ -1,3 +1,9 @@
+name: Release
+
+# 👇 ДОБАВЛЯЕМ ПРАВА НА ЗАПИСЬ (ЧТОБЫ МОЖНО БЫЛО СОЗДАТЬ РЕЛИЗ)
+permissions:
+  contents: write
+
 on:
   push:
     tags:
@@ -15,7 +21,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      # Добавляем установку pnpm
       - name: install pnpm
         uses: pnpm/action-setup@v3
         with:
@@ -25,7 +30,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'pnpm' # Включаем кеширование для pnpm
+          cache: 'pnpm'
           cache-dependency-path: './PRG/service_station/pnpm-lock.yaml'
           
       - name: install Rust stable
@@ -33,7 +38,6 @@ jobs:
           
       - name: install frontend dependencies
         working-directory: ./PRG/service_station
-        # Заменили npm install на pnpm install
         run: pnpm install
         
       - name: Build the app
